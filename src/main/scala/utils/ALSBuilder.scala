@@ -1,6 +1,7 @@
 package ir.ac.usc
 package utils
 
+import conf.ALSConfig
 import org.apache.spark.mllib.recommendation.ALS
 
 object ALSBuilder {
