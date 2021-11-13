@@ -12,9 +12,9 @@ package utils
 object RecommenderDataPaths {
 
   private final val baseDir: String     = "src/main/resources/data/"
-  val membersPath: String               = baseDir + "members.csv"
-  val songsPath: String                 = baseDir + "songs.csv"
   val songsExtraInfoPath: String        = baseDir + "song_extra_info.csv"
-  val ratingsPath: String               = baseDir + "train.csv"
+  val usersPath: String                 = baseDir + "users.csv"
+  val songsPath: String                 = baseDir + "songs_main.csv"
+  val ratingsPath: String               = baseDir + "ratings.csv"
 
 }

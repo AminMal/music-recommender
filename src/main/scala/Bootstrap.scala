@@ -9,7 +9,7 @@ object Bootstrap {
 
   lazy final val spark = SparkSession
     .builder()
-    .appName("scala-recommender-system")
+    .appName("scommender")
     .config("spark.master", "local")  // todo, this needs to be removed in production
     .getOrCreate()
 

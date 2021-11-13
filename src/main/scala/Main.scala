@@ -1,54 +1,89 @@
 package ir.ac.usc
 
 import Bootstrap._
+import utils.{ALSBuilder, RecommenderDataPaths => Paths}
 
+import org.apache.spark.mllib.recommendation.Rating
+import org.apache.spark.sql.Row
+
+import scala.util.{Failure, Success, Try}
 import org.apache.spark.sql.functions._
-import utils.{RecommenderDataPaths => Paths}
-
-import org.apache.spark.sql.types.DataTypes
 
 
 object Main extends App {
 
-  val membersDF = spark.read
-    .option("header", "true")
-    .csv(path = Paths.membersPath)
-    .select(
-      col("msno") as "user_id",
-      expr("coalesce(gender, 'male') as gender")
-    )
+  case class Song(
+                 id: Long,
+                 name: String,
+                 artistName: Option[String]
+                 )
 
-  val songsBaseDF = spark.read
-    .option("header", "true")
-    .csv(path = Paths.songsPath)
-
-  val songsExtraInfo = spark.read
-    .option("header", "true")
-    .csv(path = Paths.songsExtraInfoPath)
-    .select(
-      col("song_id") as "s_id",
-      col("name") as "song_name"
+  object Song {
+    def fromRow(r: Row): Song = Song(
+      id = r.getString(0).toLong,
+      name = r.getString(1),
+      artistName = Try(r.getString(2)).toOption
     )
-
-  val songsDF = songsBaseDF
-    .join(songsExtraInfo, songsExtraInfo("s_id") === songsBaseDF("song_id"), joinType = "left")
-    .select(
-      col("song_id"),
-      col("genre_ids"),
-      col("song_name"),
-      col("artist_name")
-    )
+  }
 
   val ratings = spark.read
     .option("header", "true")
     .csv(path = Paths.ratingsPath)
-    .select(
-      col("msno") as "user_id",
-      col("song_id"),
-      col("target").cast(DataTypes.BooleanType) as "liked"
-    )
 
-  ratings.show(20)
+  ratings.show(10)
+
+  val ratingsRDD = ratings.rdd.map { ratingRow =>
+    val userId = ratingRow.getString(0).toInt
+    val songId = ratingRow.getString(1).toInt
+    val target = ratingRow.getString(2)
+
+    Rating(
+      user = userId,
+      product = songId,
+      rating = target.toDouble
+    )
+  }
+
+  val model = ALSBuilder.forConfig(ALSDefaultConf).run(ratingsRDD)
+
+  val songsDF = spark.read
+    .option("header", "true")
+    .csv(path = Paths.songsPath)
+
+  val songsThisUserLikes = ratings.filter("user_id = 2032245261")
+
+  songsThisUserLikes.show(100)
+
+  def getSongInfo(songId: Int) = {
+    Song.fromRow(
+    songsDF.filter(s"song_id = $songId")
+      .select(
+        col("song_id"),
+        col("name"),
+        col("artist_name")
+      )
+      .head()
+    )
+  }
+
+
+  Try(model.recommendProducts(2032245261, 6)) match {
+    case Failure(exception) =>
+      println("exception happened for user 2032245261")
+      println("----------------------------")
+      exception.printStackTrace()
+      println("----------------------------")
+    case Success(value) =>
+      value.foreach { rating =>
+        val song = getSongInfo(rating.product)
+        println(
+          s"""
+             |User with id ${rating.user} will like song:
+             |$song with rate of ${rating.rating}
+             |""".stripMargin
+        )
+      }
+  }
 
 
 }
