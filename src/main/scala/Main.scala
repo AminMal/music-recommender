@@ -1,54 +1,46 @@
 package ir.ac.usc
 
-import Bootstrap._
+import Bootstrap.DataFrames.ratingsDF
+import utils.{ALSBuilder, ResultsHelper}
+import conf.ALSDefaultConf
 
-import org.apache.spark.sql.functions._
-import utils.{RecommenderDataPaths => Paths}
+import org.apache.spark.mllib.recommendation.Rating
 
-import org.apache.spark.sql.types.DataTypes
+import scala.util.Try
 
 
 object Main extends App {
 
-  val membersDF = spark.read
-    .option("header", "true")
-    .csv(path = Paths.membersPath)
-    .select(
-      col("msno") as "user_id",
-      expr("coalesce(gender, 'male') as gender")
+  val ratingsRDD = ratingsDF.rdd.map { ratingRow =>
+    val userId = ratingRow.getString(0).toInt
+    val songId = ratingRow.getString(1).toInt
+    val target = ratingRow.getString(2)
+
+    Rating(
+      user = userId,
+      product = songId,
+      rating = target.toDouble
     )
+  }
 
-  val songsBaseDF = spark.read
-    .option("header", "true")
-    .csv(path = Paths.songsPath)
+  val model = ALSBuilder.forConfig(ALSDefaultConf).run(ratingsRDD)
 
-  val songsExtraInfo = spark.read
-    .option("header", "true")
-    .csv(path = Paths.songsExtraInfoPath)
-    .select(
-      col("song_id") as "s_id",
-      col("name") as "song_name"
-    )
+  def getRecommendationsForUser(userId: Int, recommendationsCount: Int = 6): Option[Seq[Rating]] =
+    Try[Seq[Rating]](
+      model.recommendProducts(user = userId, num = recommendationsCount)
+    ).toOption
 
-  val songsDF = songsBaseDF
-    .join(songsExtraInfo, songsExtraInfo("s_id") === songsBaseDF("song_id"), joinType = "left")
-    .select(
-      col("song_id"),
-      col("genre_ids"),
-      col("song_name"),
-      col("artist_name")
-    )
 
-  val ratings = spark.read
-    .option("header", "true")
-    .csv(path = Paths.ratingsPath)
-    .select(
-      col("msno") as "user_id",
-      col("song_id"),
-      col("target").cast(DataTypes.BooleanType) as "liked"
-    )
+  val res1 = getRecommendationsForUser(162731586)
+    .map(_.map(ResultsHelper.getRecommendationResult).filter(_.isDefined).map(_.get))
+  val res2 = getRecommendationsForUser(1426732356)
+    .map(_.map(ResultsHelper.getRecommendationResult).filter(_.isDefined).map(_.get))
+  val res3 = getRecommendationsForUser(1128888321)
+    .map(_.map(ResultsHelper.getRecommendationResult).filter(_.isDefined).map(_.get))
 
-  ratings.show(20)
+  res1.foreach(_.foreach(println))
+  res2.foreach(_.foreach(println))
+  res3.foreach(_.foreach(println))
 
 
 }
