@@ -8,7 +8,7 @@ import org.apache.spark.mllib.recommendation.Rating
 
 import scala.util.Try
 
-object ResultsHelper {
+class ResultsHelper {
 
   def getSongInfo(songId: Int): Option[Song] =
     Try {
