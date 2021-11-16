@@ -13,10 +13,11 @@ lazy val root = (project in file("."))
     name := "recommender",
 //    libraryDependencies += scalaTest % Test,
     libraryDependencies ++= Seq(
-      sparkCore,
-      sparkMLlib,
+      SparkCore,
+      SparkMLlib,
       AkkaActorsTyped,
       AkkaStreams,
-      AkkaHttp
+      AkkaHttp,
+      SprayJson
     )
   )
