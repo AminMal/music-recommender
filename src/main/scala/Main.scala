@@ -1,46 +1,32 @@
 package ir.ac.usc
 
-import Bootstrap.DataFrames.ratingsDF
-import utils.{ALSBuilder, ResultsHelper}
+import utils.ALSBuilder
+import Bootstrap.DataFrames.ratingsRDD
+import Bootstrap.{serverBinding, system}
 import conf.ALSDefaultConf
+import controllers.{ApplicationStatusController, RecommendationController}
 
-import org.apache.spark.mllib.recommendation.Rating
+import models.RecommenderFactorizationModel
+import org.apache.spark.mllib.recommendation.MatrixFactorizationModel
 
-import scala.util.Try
+import scala.concurrent.Future
 
 
 object Main extends App {
 
-  val ratingsRDD = ratingsDF.rdd.map { ratingRow =>
-    val userId = ratingRow.getString(0).toInt
-    val songId = ratingRow.getString(1).toInt
-    val target = ratingRow.getString(2)
+  import system.dispatcher
 
-    Rating(
-      user = userId,
-      product = songId,
-      rating = target.toDouble
-    )
+  serverBinding
+  val matrixModelFuture = Future {
+    val model: MatrixFactorizationModel = ALSBuilder.forConfig(ALSDefaultConf).run(ratingsRDD)
+    val recommenderMatrixModel = RecommenderFactorizationModel.fromMatrixModel(model)
+    println(s"--- finished training model ---")
+    Bootstrap.applicationController ! ApplicationStatusController.Messages.ModelActivated
+    Bootstrap.recommenderActors.foreach { recommendActor =>
+      recommendActor ! RecommendationController.Messages.UpdateContext(recommenderMatrixModel.copy())
+    }
+    model
   }
-
-  val model = ALSBuilder.forConfig(ALSDefaultConf).run(ratingsRDD)
-
-  def getRecommendationsForUser(userId: Int, recommendationsCount: Int = 6): Option[Seq[Rating]] =
-    Try[Seq[Rating]](
-      model.recommendProducts(user = userId, num = recommendationsCount)
-    ).toOption
-
-
-  val res1 = getRecommendationsForUser(162731586)
-    .map(_.map(ResultsHelper.getRecommendationResult).filter(_.isDefined).map(_.get))
-  val res2 = getRecommendationsForUser(1426732356)
-    .map(_.map(ResultsHelper.getRecommendationResult).filter(_.isDefined).map(_.get))
-  val res3 = getRecommendationsForUser(1128888321)
-    .map(_.map(ResultsHelper.getRecommendationResult).filter(_.isDefined).map(_.get))
-
-  res1.foreach(_.foreach(println))
-  res2.foreach(_.foreach(println))
-  res3.foreach(_.foreach(println))
 
 
 }
