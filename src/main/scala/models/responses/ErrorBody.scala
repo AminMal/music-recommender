@@ -1,3 +1,7 @@
-package ir.ac.usc.models.responses
+package ir.ac.usc
+package models.responses
 
-case class ErrorBody()
+case class ErrorBody(
+                    code: Int,
+                    message: Option[String]
+                    )

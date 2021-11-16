@@ -1,3 +1,7 @@
-package ir.ac.usc.models.responses
+package ir.ac.usc
+package models.responses
 
-case class SuccessResponse()
+case class SuccessResponse[D](
+                             success: Boolean = true,
+                             data: D
+                             )
