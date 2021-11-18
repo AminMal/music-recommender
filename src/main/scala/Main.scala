@@ -2,11 +2,9 @@ package ir.ac.usc
 
 import utils.ALSBuilder
 import Bootstrap.DataFrames.ratingsRDD
-import Bootstrap.{serverBinding, system}
+import Bootstrap.system
 import conf.ALSDefaultConf
 import controllers.{ApplicationStatusController, RecommendationController}
-
-import models.RecommenderFactorizationModel
 import org.apache.spark.mllib.recommendation.MatrixFactorizationModel
 
 import scala.concurrent.Future
@@ -15,15 +13,15 @@ import scala.concurrent.Future
 object Main extends App {
 
   import system.dispatcher
+  import HttpServer.{applicationController, recommenderActors}
 
-  serverBinding
+  HttpServer.serverBinding
   val matrixModelFuture = Future {
     val model: MatrixFactorizationModel = ALSBuilder.forConfig(ALSDefaultConf).run(ratingsRDD)
-    val recommenderMatrixModel = RecommenderFactorizationModel.fromMatrixModel(model)
     println(s"--- finished training model ---")
-    Bootstrap.applicationController ! ApplicationStatusController.Messages.ModelActivated
-    Bootstrap.recommenderActors.foreach { recommendActor =>
-      recommendActor ! RecommendationController.Messages.UpdateContext(recommenderMatrixModel.copy())
+    applicationController ! ApplicationStatusController.Messages.ModelActivated
+    recommenderActors.foreach { recommendActor =>
+      recommendActor ! RecommendationController.Messages.UpdateContext(model)
     }
     model
   }

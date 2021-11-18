@@ -10,9 +10,9 @@ package conf
 
 object RecommenderDataPaths {
 
-  private final val baseDir: String = "src/main/resources/data/"
-  val usersPath: String = baseDir + "users.csv"
-  val songsPath: String = baseDir + "songs_main.csv"
-  val ratingsPath: String = baseDir + "ratings.csv"
+  private final val baseDir: String   = "src/main/resources/data/"
+  val usersPath: String               = baseDir + "users.csv"
+  val songsPath: String               = baseDir + "songs_main.csv"
+  val ratingsPath: String            = baseDir + "ratings.csv"
 
 }

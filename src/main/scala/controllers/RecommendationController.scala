@@ -2,24 +2,25 @@ package ir.ac.usc
 package controllers
 
 import akka.actor.Actor
-import models.{RecommenderFactorizationModel, Song, User}
+import models.{Song, User}
 import utils.ResultsHelper
 
 import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server.Directives._
 import akka.util.Timeout
-import Bootstrap.recommenderActor
+import HttpServer.recommenderActor
 import controllers.RecommendationController.Responses.RecommendationResult
 
 import akka.http.scaladsl.server.Route
-import akka.pattern.{ask, pipe}
+import akka.pattern.ask
 import controllers.RecommendationController.defaultTrendingSongs
+
+import org.apache.spark.mllib.recommendation.MatrixFactorizationModel
 
 class RecommendationController extends Actor {
 
   import RecommendationController.Messages._
   import RecommendationController.Responses._
-  import Bootstrap.system.dispatcher
 
   val resultsHelper = new ResultsHelper()
 
@@ -46,46 +47,43 @@ class RecommendationController extends Actor {
     case _ => ModelNotTrainedYet
   }
 
-  def receiveWithModel(model: RecommenderFactorizationModel): Receive = {
+  def receiveWithModel(model: MatrixFactorizationModel): Receive = {
     case UpdateContext(newModel) =>
       context.become(receiveWithModel(newModel))
       sender() ! ContextUpdated
 
     case GetUserRecommendations(user, count) =>
-      val recommendationsFuture = model.recommendProductsFuture(user.userId, count)
-      val songsFuture = recommendationsFuture.map { recommendations =>
-        recommendations.map(rating => resultsHelper.getSongInfo(rating.product))
-      }
-      val recommendationResult = songsFuture.map { songs =>
+      val recommendations = model.recommendProducts(user.userId, count)
+      val songs = recommendations.map(rating => resultsHelper.getSongInfo(rating.product))
+      val recommendationResult =
         RecommendationResult(
           userId = user.userId,
           songs = songs.filter(_.isDefined).map(_.get),
           actorName = self.path.name
         )
-      }
-      recommendationResult pipeTo sender()
+
+      sender() ! recommendationResult
 
     case GetRecommendations(userId, count) =>
-      val recommendationsFuture = model.recommendProductsFuture(userId, count)
-      val songsFuture = recommendationsFuture.map { recommendations =>
-        recommendations.map(rating => resultsHelper.getSongInfo(rating.product))
-      }
-      val recommendationResult = songsFuture.map { songs =>
+      val recommendations = model.recommendProducts(userId, count)
+      val songs = recommendations.map(rating => resultsHelper.getSongInfo(rating.product))
+
+      val recommendationResult =
         RecommendationResult(
           userId = userId,
           songs = songs.filter(_.isDefined).map(_.get),
           actorName = self.path.name
         )
-      }
 
-      recommendationResult pipeTo sender()
+
+      sender() ! recommendationResult
   }
 
 }
 
 object RecommendationController {
   object Messages {
-    case class UpdateContext(model: RecommenderFactorizationModel)
+    case class UpdateContext(model: MatrixFactorizationModel)
     case class GetUserRecommendations(user: User, count: Int = 6)
     case class GetRecommendations(userId: Int, count: Int = 6)
   }
@@ -112,7 +110,9 @@ object RecommendationController {
   )
 
   def routes(implicit timeout: Timeout): Route = path("recommend" / Segment) { userId =>
-    val result = (recommenderActor ? RecommendationController.Messages.GetRecommendations(userId.toInt)).mapTo[RecommendationResult]
+    val result = (recommenderActor ? RecommendationController.Messages.GetRecommendations(userId.toInt))
+      .mapTo[RecommendationResult]
+
     onSuccess(result) { res =>
       complete(status = StatusCodes.OK, v = res)
     }

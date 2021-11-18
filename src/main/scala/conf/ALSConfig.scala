@@ -7,7 +7,7 @@ package conf
  * @param iterations number of iterations for algorithm
  * @param lambda lambda parameter for ALS
  * @param alpha alpha parameter for ALS
- * @param block number of blocks
+ * @param block number of blocks, -1 to auto configuration
  * @param seed seed parameter for ALS
  * @param implicitPreferences implicit preferences for ALS algorithm
  */
@@ -18,5 +18,5 @@ case class ALSConfig(
                       alpha: Double,
                       block: Int,
                       seed: Long,
-                      implicitPreferences: Boolean = false
+                      implicitPreferences: Boolean = true
                     )
