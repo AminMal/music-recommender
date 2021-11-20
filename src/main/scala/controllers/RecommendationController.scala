@@ -1,7 +1,7 @@
 package ir.ac.usc
 package controllers
 
-import akka.actor.Actor
+import akka.actor.{Actor, ActorLogging}
 import models.{Song, User}
 import utils.ResultsHelper
 
@@ -17,7 +17,7 @@ import controllers.RecommendationController.defaultTrendingSongs
 
 import org.apache.spark.mllib.recommendation.MatrixFactorizationModel
 
-class RecommendationController extends Actor {
+class RecommendationController extends Actor with ActorLogging {
 
   import RecommendationController.Messages._
   import RecommendationController.Responses._
@@ -29,6 +29,7 @@ class RecommendationController extends Actor {
   def initialReceive: Receive = {
     case UpdateContext(model) =>
       context.become(receiveWithModel(model))
+      log.info(s"update factorization model in recommender actor")
       sender() ! ContextUpdated
 
     case GetRecommendations(userId, _) =>

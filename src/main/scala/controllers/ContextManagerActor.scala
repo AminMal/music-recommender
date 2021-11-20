@@ -1,74 +1,107 @@
 package ir.ac.usc
 package controllers
 
-import akka.actor.{Actor, ActorSystem}
-import conf.ALSDefaultConf
+import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, PoisonPill, Props}
+import utils.DataFrames._
+import conf.{ALSDefaultConf, RecommenderDataPaths => Paths}
+import controllers.ContextManagerActor.ContextManagerSlaveActor
+import controllers.ContextManagerActor.Messages.UpdateModel
 import controllers.RecommendationController.Messages.UpdateContext
 import utils.ALSBuilder
-import org.apache.spark.mllib.recommendation.Rating
-import org.apache.spark.sql.SaveMode
-import akka.pattern.pipe
 
-import scala.concurrent.Future
+import org.apache.spark.sql.{DataFrame, SaveMode}
 
-class ContextManagerActor extends Actor {
+import java.util.concurrent.TimeUnit
+import scala.concurrent.duration.{Duration, FiniteDuration}
+import scala.util.{Failure, Success, Try}
+
+
+class ContextManagerActor extends Actor with ActorLogging {
 
   import ContextManagerActor.Messages._
   import ContextManagerActor.Responses._
-  import Bootstrap.DataFrames._
-  import Bootstrap.spark.implicits._
   val system: ActorSystem = context.system
-  import system.dispatcher
-  import HttpServer.recommenderActors
+  import Bootstrap.spark
+  import spark.implicits._
+  import ContextManagerActor.ContextManagerSlaveMessages._
 
-  override def receive: Receive = ???
+  // retrain model every 2 minutes, todo, should be placed in config
+  val updateInterval: FiniteDuration = FiniteDuration(2, TimeUnit.MINUTES)
 
-  def newTimeBasedReceive(accumulatedRatings: Seq[Rating]): Receive = {
-    case Initialize =>
-      if (sender() != self)
-        sender() ! Forbidden
-      else {
-        val updateMessage = Future {
-          val newRatingsDF = accumulatedRatings.toDF
-          ratingsDF.union(newRatingsDF)
-            .write
-            .mode(SaveMode.Append)
-            .save()
+  println("scheduler is starting to work")
+  system.scheduler.scheduleAtFixedRate(
+    initialDelay = Duration.Zero, interval = updateInterval
+  )(() => self ! UpdateModel)(system.dispatcher)
 
-          val newModel = ALSBuilder.forConfig(ALSDefaultConf)
-            .run(
-              newRatingsDF.rdd.map { row =>
-                Rating(
-                  user = row.getString(0).toInt,
-                  product = row.getString(1).toInt,
-                  rating = row.getString(2).toDouble
-                )
-              }
-            )
-          // on model update:
-          UpdateContext(newModel)
-        }
-        recommenderActors.foreach(actor => updateMessage pipeTo actor)
-        sender() ! ContextsUpdated
-      }
+  override def receive: Receive = {
+    case AddUserRating(userId, songId, rate) =>
+      val rating = Seq((userId, songId, rate)).toDF
+      val slave = context.actorOf(Props[ContextManagerSlaveActor])
+      slave ! AppendRating(rating, sender())
 
+
+    case UpdateModel =>
+      log.info("updating model started on context manager actor")
+      val slave = context.actorOf(Props[ContextManagerSlaveActor])
+      slave ! UpdateModel
+
+
+    case OperationBindResult(result, replyTo) =>
+      replyTo ! result
+      sender() /* slave */ ! PoisonPill
   }
 }
 
 object ContextManagerActor {
+
+  sealed class ContextManagerSlaveActor extends Actor with ActorLogging {
+    import ContextManagerSlaveMessages._
+    import HttpServer.recommenderActors
+    import ContextManagerActor.Responses._
+
+    def receive: Receive = {
+      case AppendRating(rates, replyTo) =>
+        Try {
+          rates.write
+            .mode(SaveMode.Append)
+            .parquet(path = Paths.ratingsPath)
+        } match {
+          case Failure(throwable) =>
+            sender() ! OperationBindResult(OperationFailure(throwable), replyTo)
+          case Success(_) =>
+            sender() ! OperationBindResult(SuccessfulOperation, replyTo)
+        }
+
+
+      case UpdateModel =>
+        val model = ALSBuilder.forConfig(ALSDefaultConf).run(
+          ratingsRDD
+        )
+        log.info(s"model refreshed")
+        recommenderActors.foreach(ref => ref ! UpdateContext(model))
+        sender() ! SuccessfulOperation
+    }
+
+  }
+
+  object ContextManagerSlaveMessages {
+    case class AppendRating(rates: DataFrame, replyTo: ActorRef)
+  }
+
   object Messages {
     case class AddUserRating(
-                            userId: Int,
-                            songId: Int,
+                            userId: Long,
+                            songId: Long,
                             rating: Double
                             )
 
-    case object Initialize
+    case object UpdateModel
 
   }
   object Responses {
-    sealed trait ContextManagerResponse
-    case object Forbidden extends ContextManagerResponse
-    case object ContextsUpdated
+    sealed trait CMOperationResult // ContextManagerOperationResult
+    case object SuccessfulOperation extends CMOperationResult
+    case class OperationFailure(throwable: Throwable) extends CMOperationResult
+    case class OperationBindResult(result: CMOperationResult, replyTo: ActorRef)
   }
 }
