@@ -1,6 +1,6 @@
 package ir.ac.usc
 
-import controllers.{ApplicationStatusController, RecommendationController}
+import controllers.{ApplicationStatusController, ContextManagerActor, RecommendationController}
 
 import akka.http.scaladsl.Http
 import akka.util.Timeout
@@ -27,7 +27,7 @@ object HttpServer {
       recommenerRoutes
 
   import system.dispatcher
-  lazy val serverBinding: Future[Http.ServerBinding] = Http().newServerAt(
+  lazy val runServer: () => Future[Http.ServerBinding] = () => Http().newServerAt(
     ServerConfig.serverInterface, ServerConfig.serverPort
   )
     .withMaterializer(materializer)
@@ -36,6 +36,7 @@ object HttpServer {
 
   println(s"--- started server on port ${ServerConfig.serverPort} ---")
 
+  val contextManagerActor: ActorRef = system.actorOf(Props[ContextManagerActor])
   val applicationController: ActorRef = system.actorOf(Props[ApplicationStatusController])
   val recommenderActors: Seq[ActorRef] = (1 to 51).toSeq.map { index =>
     system.actorOf(Props[RecommendationController], s"recommender-actor-$index")
