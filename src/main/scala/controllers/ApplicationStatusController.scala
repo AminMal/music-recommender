@@ -6,7 +6,7 @@ import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server.Directives._
 import akka.pattern.ask
 import akka.util.Timeout
-import Bootstrap.applicationController
+import HttpServer.applicationController
 import models.responses.SuccessResponse
 
 import spray.json.JsString

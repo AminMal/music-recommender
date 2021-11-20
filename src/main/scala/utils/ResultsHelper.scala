@@ -1,7 +1,7 @@
 package ir.ac.usc
 package utils
 
-import Bootstrap.DataFrames._
+import utils.DataFrames._
 import models.{RecommendationResult, Song, User}
 
 import org.apache.spark.mllib.recommendation.Rating
