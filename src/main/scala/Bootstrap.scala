@@ -12,10 +12,11 @@ import models.Song
 import org.apache.spark.mllib.recommendation.Rating
 import spray.json.DefaultJsonProtocol._
 import spray.json.RootJsonFormat
-
 import controllers.RecommendationController.Responses._
+
 import akka.stream.Materializer
 import org.apache.spark.rdd.RDD
+import org.apache.spark.sql.types.{DataTypes, StructField, StructType}
 
 object Bootstrap {
 
@@ -48,32 +49,4 @@ object Bootstrap {
     implicit val errorBodyFormatter: RootJsonFormat[ErrorBody] = jsonFormat2(ErrorBody)
     implicit def unsuccessResponseFormatter: RootJsonFormat[FailureResponse] = jsonFormat2(FailureResponse)
   }
-
-  object DataFrames {
-    lazy val usersDF: DataFrame = spark.read
-      .option("header", "true")
-      .csv(path = Paths.usersPath)
-
-    lazy val songsDF: DataFrame = spark.read
-      .option("header", "true")
-      .csv(path = Paths.songsPath)
-
-    val ratingsDF: DataFrame = spark.read
-      .option("header", "true")
-      .csv(path = Paths.ratingsPath)
-
-    val ratingsRDD: RDD[Rating] = ratingsDF.rdd.map { ratingRow =>
-      val userId = ratingRow.getString(0).toInt
-      val songId = ratingRow.getString(1).toInt
-      val target = ratingRow.getString(2)
-
-      Rating(
-        user = userId,
-        product = songId,
-        rating = target.toDouble
-      )
-    }
-      .cache()
-  }
-
 }
