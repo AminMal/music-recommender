@@ -50,6 +50,7 @@ class RecommendationController extends Actor with ActorLogging {
 
   def receiveWithModel(model: MatrixFactorizationModel): Receive = {
     case UpdateContext(newModel) =>
+      log.info(s"update factorization model in recommender actor")
       context.become(receiveWithModel(newModel))
       sender() ! ContextUpdated
 
@@ -102,7 +103,7 @@ object RecommendationController {
   import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
 
   val defaultTrendingSongs: Seq[Song] = Seq(
-    Song(id = 125323, name = "Mu universe", Some("Coldplay")),
+    Song(id = 125323, name = "Coloratura", Some("Coldplay")),
     Song(id = 321534, name = "Do I wanna know?", Some("Arctic monkeys")),
     Song(id = 413416, name = "Love and hate", Some("Michael Kiwanuka")),
     Song(id = 782351, name = "Riders on the storm", Some("The doors")),
