@@ -24,7 +24,8 @@ object HttpServer {
 
   val route: Route =
     applicationHandlerRoutes ~
-      recommenerRoutes
+      recommenerRoutes ~
+      ContextManagerActor.routes
 
   import system.dispatcher
   lazy val runServer: () => Future[Http.ServerBinding] = () => Http().newServerAt(

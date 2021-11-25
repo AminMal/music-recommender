@@ -67,16 +67,27 @@ class RecommendationController extends Actor with ActorLogging {
       sender() ! recommendationResult
 
     case GetRecommendations(userId, count) =>
-      val recommendations = model.recommendProducts(userId, count)
-      val songs = recommendations.map(rating => resultsHelper.getSongInfo(rating.product))
+      val userOpt = resultsHelper.getUserInfo(userId)
+      val novemberRainPrediction = model.predict(userId, 1879229354)
+      log.info(s"this users gonna like november rain as $novemberRainPrediction")
+      val recommendationResult = userOpt.map { user =>
+        log.info(s"Found user: $user")
+        val recommendations = model.recommendProducts(user.userId, count)
+        log.info(s"got ratings: ${recommendations.toSeq}")
+        val songs = recommendations.map(rating => resultsHelper.getSongInfo(rating.product))
 
-      val recommendationResult =
         RecommendationResult(
           userId = userId,
           songs = songs.filter(_.isDefined).map(_.get),
           actorName = self.path.name
         )
-
+      }.getOrElse(
+        RecommendationResult(
+          userId = userId,
+          songs = defaultTrendingSongs,
+          actorName = self.path.name
+        )
+      )
 
       sender() ! recommendationResult
   }

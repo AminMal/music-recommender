@@ -35,6 +35,5 @@ object DataFrames {
       rating = target
     )
   }
-    .cache()
 
 }

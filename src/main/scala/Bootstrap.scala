@@ -1,22 +1,18 @@
 package ir.ac.usc
 
-import org.apache.spark.sql.{DataFrame, SparkSession}
+import org.apache.spark.sql.SparkSession
 import org.apache.log4j.{Level, Logger}
-import conf.{RecommenderDataPaths => Paths}
-
 import akka.actor.ActorSystem
 import controllers.ApplicationStatusController.Responses._
-import models.responses.{ErrorBody, FailureResponse, SuccessResponse}
-import models.Song
+import models.responses.{ErrorBody, FailureResponse, ResponseMessage, SuccessResponse}
+import models.{Song, SongDTO, User}
 
-import org.apache.spark.mllib.recommendation.Rating
 import spray.json.DefaultJsonProtocol._
 import spray.json.RootJsonFormat
 import controllers.RecommendationController.Responses._
 
 import akka.stream.Materializer
-import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.types.{DataTypes, StructField, StructType}
+import controllers.ContextManagerActor.Messages.{AddUser, AddUserRating}
 
 object Bootstrap {
 
@@ -46,7 +42,11 @@ object Bootstrap {
                                             ): RootJsonFormat[SuccessResponse[D]] =
       jsonFormat2(SuccessResponse[D])
 
-    implicit val errorBodyFormatter: RootJsonFormat[ErrorBody] = jsonFormat2(ErrorBody)
-    implicit def unsuccessResponseFormatter: RootJsonFormat[FailureResponse] = jsonFormat2(FailureResponse)
+    implicit val errorBodyFormatter: RootJsonFormat[ErrorBody] = jsonFormat2(ErrorBody.apply)
+    implicit def unsuccessResponseFormatter: RootJsonFormat[FailureResponse] = jsonFormat2(FailureResponse.apply)
+    implicit val addUserRatingFormatter: RootJsonFormat[AddUserRating] = jsonFormat3(AddUserRating)
+    implicit val messageFormatter: RootJsonFormat[ResponseMessage] = jsonFormat1(ResponseMessage.apply)
+    implicit val addUserFormat: RootJsonFormat[User] = jsonFormat3(User.apply)
+    implicit val songDtoFormatter: RootJsonFormat[SongDTO] = jsonFormat6(SongDTO.apply)
   }
 }
