@@ -44,7 +44,7 @@ object Bootstrap {
 
     implicit val errorBodyFormatter: RootJsonFormat[ErrorBody] = jsonFormat2(ErrorBody.apply)
     implicit def unsuccessResponseFormatter: RootJsonFormat[FailureResponse] = jsonFormat2(FailureResponse.apply)
-    implicit val addUserRatingFormatter: RootJsonFormat[AddUserRating] = jsonFormat3(AddUserRating)
+    implicit val addUserRatingFormatter: RootJsonFormat[AddUserRating] = jsonFormat3(AddUserRating.apply)
     implicit val messageFormatter: RootJsonFormat[ResponseMessage] = jsonFormat1(ResponseMessage.apply)
     implicit val addUserFormat: RootJsonFormat[User] = jsonFormat3(User.apply)
     implicit val songDtoFormatter: RootJsonFormat[SongDTO] = jsonFormat6(SongDTO.apply)
