@@ -49,10 +49,6 @@ class RecommendationController extends Actor with ActorLogging {
   }
 
   def receiveWithModel(model: MatrixFactorizationModel): Receive = {
-    case UpdateContext(newModel) =>
-      log.info(s"update factorization model in recommender actor")
-      context.become(receiveWithModel(newModel))
-
     case GetRecommendations(userId, count) =>
       val userOpt = resultsHelper.getUserInfo(userId)
       val recommendationResult = userOpt.map { user =>
