@@ -4,7 +4,6 @@ package controllers
 import akka.actor.Actor
 import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server.Directives._
-import akka.pattern.ask
 import akka.util.Timeout
 import HttpServer.applicationController
 import models.responses.SuccessResponse
@@ -13,7 +12,6 @@ import akka.pattern.{ask, pipe}
 import controllers.ContextManagerActor.Messages.GetLatestModel
 
 import org.apache.spark.mllib.recommendation.MatrixFactorizationModel
-import spray.json.JsString
 
 import java.time.LocalDateTime
 import java.util.concurrent.TimeUnit
@@ -28,7 +26,7 @@ class ApplicationStatusController extends Actor {
   import context.dispatcher
   def initialReceive: Receive = {
     case HealthCheck =>
-      val modelOptFuture = (HttpServer.contextManagerActor ?GetLatestModel)(contextManagerMessageTimeout)
+      val modelOptFuture = (HttpServer.contextManagerActor ? GetLatestModel)(contextManagerMessageTimeout)
         .mapTo[Option[MatrixFactorizationModel]]
       modelOptFuture.map { modelOpt =>
         HealthCheckResponse(matrixModelStatus = modelOpt.isDefined)
