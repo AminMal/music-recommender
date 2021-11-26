@@ -9,30 +9,30 @@ import akka.util.Timeout
 import HttpServer.applicationController
 import models.responses.SuccessResponse
 
+import akka.pattern.{ask, pipe}
+import controllers.ContextManagerActor.Messages.GetLatestModel
+
+import org.apache.spark.mllib.recommendation.MatrixFactorizationModel
 import spray.json.JsString
 
 import java.time.LocalDateTime
+import java.util.concurrent.TimeUnit
 
 class ApplicationStatusController extends Actor {
   import ApplicationStatusController.Messages._
   import ApplicationStatusController.Responses._
 
   override def receive: Receive = initialReceive
+  val contextManagerMessageTimeout: Timeout = Timeout(5, TimeUnit.SECONDS)
 
+  import context.dispatcher
   def initialReceive: Receive = {
-    case ModelActivated =>
-      context.become(handler)
-      sender() ! ModelActivationResponse(true)
     case HealthCheck =>
-      sender() ! HealthCheckResponse(matrixModelStatus = false)
-    case _ => sender() ! "Training model"
-  }
-
-  def handler: Receive = {
-    case HealthCheck =>
-      sender() ! HealthCheckResponse(matrixModelStatus = true)
-    case ping => sender() ! "pong"
-    case _ => sender() ! "I don't recognize this message"
+      val modelOptFuture = (HttpServer.contextManagerActor ?GetLatestModel)(contextManagerMessageTimeout)
+        .mapTo[Option[MatrixFactorizationModel]]
+      modelOptFuture.map { modelOpt =>
+        HealthCheckResponse(matrixModelStatus = modelOpt.isDefined)
+      } pipeTo sender()
   }
 
 }
@@ -40,7 +40,6 @@ class ApplicationStatusController extends Actor {
 object ApplicationStatusController {
   object Messages {
     case object HealthCheck
-    case object ModelActivated
   }
   object Responses {
     case class HealthCheckResponse(
@@ -64,13 +63,6 @@ object ApplicationStatusController {
         val result = (applicationController ? HealthCheck).mapTo[HealthCheckResponse]
         onSuccess(result) { res =>
           complete(status = StatusCodes.OK, SuccessResponse(data = res))
-        }
-      }
-    } ~ path("ping") {
-      get {
-        val result = (applicationController ? "ping").mapTo[String]
-        onSuccess(result) { res =>
-          complete(status = StatusCodes.OK, JsString(res))
         }
       }
     }

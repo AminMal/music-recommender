@@ -7,7 +7,7 @@ case class SongDTO(
                   length: Long,
                   genreIds: String,
                   artistName: String,
-                  language: Double // lack of good data model
+                  language: Double // lack of good data
                   ) {
   def decoupled() = (id, name, length, genreIds, artistName, language)
 }
