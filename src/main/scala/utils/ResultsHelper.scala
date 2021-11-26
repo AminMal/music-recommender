@@ -6,22 +6,32 @@ import models.{RecommendationResult, Song, User}
 
 import org.apache.spark.mllib.recommendation.Rating
 
-import scala.util.Try
+import scala.util.{Failure, Success, Try}
 
 class ResultsHelper {
 
-  def getSongInfo(songId: Int): Option[Song] =
+  def getSongInfo(songId: Int): Option[Song] = {
     Try {
       Song.fromRow(
-        songsDF.filter(s"song_id = $songId")
+        songsDF.filter(_.getLong(0) == songId.toLong)
           .head()
       )
-    }.toOption
+    } match {
+      case Failure(exception) =>
+        println("----exception happened in fetching result----")
+        println("-------------")
+        exception.printStackTrace()
+        println("-------------")
+        Option.empty[Song]
+      case Success(value) =>
+        Some(value)
+    }
+  }
 
   def getUserInfo(userId: Int): Option[User] =
     Try {
       User.fromRow(
-        usersDF.filter(s"user_id = $userId")
+        usersDF.filter(s"user_id = ${userId.toLong}")
           .head()
       )
     }.toOption

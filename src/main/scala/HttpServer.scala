@@ -1,6 +1,6 @@
 package ir.ac.usc
 
-import controllers.{ApplicationStatusController, ContextManagerActor, RecommendationController}
+import controllers.{ApplicationStatusController, ContextManagerActor, RecommendationController, RecommenderManagerActor}
 
 import akka.http.scaladsl.Http
 import akka.util.Timeout
@@ -9,22 +9,21 @@ import akka.http.scaladsl.server.Route
 import conf.ServerConfig
 
 import akka.actor.{ActorRef, Props}
-
+import controllers.RecommenderManagerActor.Messages._
+import akka.pattern.ask
 import scala.concurrent.Future
 import java.util.concurrent.TimeUnit
 import scala.concurrent.duration.DurationInt
-import scala.util.Random
 
 object HttpServer {
 
   import Bootstrap.{system, materializer}
   implicit val timeout: Timeout = Timeout(60, TimeUnit.SECONDS)
-  private val applicationHandlerRoutes = ApplicationStatusController.routes
-  private val recommenerRoutes = RecommendationController.routes
 
   val route: Route =
-    applicationHandlerRoutes ~
-      recommenerRoutes
+    ApplicationStatusController.routes ~
+      RecommendationController.routes ~
+      ContextManagerActor.routes
 
   import system.dispatcher
   lazy val runServer: () => Future[Http.ServerBinding] = () => Http().newServerAt(
@@ -37,12 +36,9 @@ object HttpServer {
   println(s"--- started server on port ${ServerConfig.serverPort} ---")
 
   val contextManagerActor: ActorRef = system.actorOf(Props[ContextManagerActor])
+  val recommenderManager: ActorRef = system.actorOf(Props[RecommenderManagerActor])
   val applicationController: ActorRef = system.actorOf(Props[ApplicationStatusController])
-  val recommenderActors: Seq[ActorRef] = (1 to 51).toSeq.map { index =>
-    system.actorOf(Props[RecommendationController], s"recommender-actor-$index")
-  }
-  def recommenderActor: ActorRef = {
-    val randomIndex = Random.nextInt(50)  // todo, replace with some logic
-    recommenderActors(randomIndex % 50)
-  }
+
+  def newRecommenderActor: Future[ActorRef] =
+    (recommenderManager ? NewRecommenderActor).mapTo[ActorRef]
 }

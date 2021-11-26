@@ -16,7 +16,7 @@ case class Song(
 
 object Song {
   def fromRow(r: Row): Song = Song(
-    id = r.getString(0).toLong,
+    id = r.getLong(0),
     name = r.getString(1),
     artistName = Try(r.getString(4)).toOption
   )
