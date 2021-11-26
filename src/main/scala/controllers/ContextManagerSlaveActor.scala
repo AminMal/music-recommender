@@ -3,7 +3,7 @@ package controllers
 
 import Bootstrap.system
 import conf.ALSDefaultConf
-import controllers.ContextManagerActor.Messages.{AddSong, AddUser, AddUserRating, UpdateModel}
+import controllers.ContextManagerActor.Messages._
 import controllers.ContextManagerActor.Responses
 import models.{SongDTO, User}
 import utils.ALSBuilder
