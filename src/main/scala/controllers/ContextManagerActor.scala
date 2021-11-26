@@ -67,9 +67,6 @@ class ContextManagerActor extends Actor with ActorLogging {
     case OperationBindResult(result, replyTo) =>
       replyTo ! result
       sender() /* slave */ ! PoisonPill
-
-    case SuccessfulOperation =>
-      sender() ! PoisonPill
   }
 
   def receiveWithLatestModel(model: MatrixFactorizationModel): Receive = {
@@ -107,9 +104,6 @@ class ContextManagerActor extends Actor with ActorLogging {
     case OperationBindResult(result, replyTo) =>
       replyTo ! result
       sender() /* slave */ ! PoisonPill
-
-    case SuccessfulOperation =>
-      sender() ! PoisonPill
   }
 }
 
