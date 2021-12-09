@@ -1,17 +1,21 @@
 package ir.ac.usc
 package controllers
 
-import Bootstrap.system
 import conf.ALSDefaultConf
 import controllers.ContextManagerActor.Messages._
 import controllers.ContextManagerActor.Responses
 import models.{SongDTO, User}
 import utils.ALSBuilder
-import utils.DataFrames.ratingsRDD
+import utils.DataFrames.{ratingsRddF, trainRddF}
 import conf.{RecommenderDataPaths => Paths}
+
+import java.time.temporal.ChronoUnit.SECONDS
+import akka.pattern.pipe
 import akka.actor.{Actor, ActorLogging, ActorRef}
 import org.apache.spark.sql.SaveMode
 
+import java.time.LocalTime
+import java.time.temporal.ChronoUnit
 import scala.util.{Failure, Success, Try}
 
 
@@ -20,6 +24,9 @@ private[controllers] class ContextManagerSlaveActor extends Actor with ActorLogg
   import Bootstrap.spark
   import spark.implicits._
   import ContextManagerSlaveActor._
+
+  override def postStop(): Unit =
+    log.info(s"(${self.path.name}) got poison pill from parent")
 
   def receive: Receive = {
     case request: (AddUserRating, ActorRef) =>
@@ -52,13 +59,13 @@ private[controllers] class ContextManagerSlaveActor extends Actor with ActorLogg
       } (parent = sender(), replyTo = replyTo)
 
     case UpdateModel =>
-      val model = ALSBuilder.forConfig(ALSDefaultConf).run(
-        ratingsRDD
-      )
-      log.info(s"model refreshed")
-      sender() ! SuccessfulUpdateOnModel(model)
+      import context.dispatcher
+      timeTrack {
+        ratingsRddF map (ALSBuilder.forConfig(ALSDefaultConf).run) map(
+            SuccessfulUpdateOnModel.apply
+          ) pipeTo sender
+      } (operationName = Some("updating model"))
 
-    case unexpectedMessage => system.deadLetters ! unexpectedMessage
   }
 
 }
@@ -75,4 +82,12 @@ object ContextManagerSlaveActor {
       case Success(_) =>
         parent ! OperationBindResult(SuccessfulOperation, replyTo)
     }
+
+  private def timeTrack[V](code: => V)(operationName: Option[String] = None, timeUnit: ChronoUnit = SECONDS): V = {
+    val start = LocalTime.now()
+    val result = code
+    val finish = LocalTime.now()
+    println(operationName.map(operation => s"Finished $operation, ").getOrElse("") + s"operation took ${timeUnit.between(start, finish)} seconds")
+    result
+  }
 }

@@ -14,5 +14,9 @@ object RecommenderDataPaths {
   val usersPath: String               = baseDir + "users"
   val songsPath: String               = baseDir + "songs"
   val ratingsPath: String             = baseDir + "ratings"
+  val trainPathCSV: String            = baseDir + "train.csv"
+  val trainPath: String               = baseDir + "train"
+  val testPathCSV: String             = baseDir + "test.csv"
+  val testPath: String                = baseDir + "test"
 
 }

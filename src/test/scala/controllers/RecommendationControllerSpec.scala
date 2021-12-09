@@ -1,10 +1,17 @@
 package ir.ac.usc
 package controllers
 
-import akka.actor.Props
+import akka.actor.{ActorSystem, Props}
 import controllers.RecommendationController.defaultTrendingSongs
 
-class RecommendationControllerSpec extends ScommenderBaseTestkit {
+import akka.testkit.{ImplicitSender, TestKit}
+import org.scalatest.{BeforeAndAfterAll, Matchers, WordSpecLike}
+
+class RecommendationControllerSpec extends TestKit(ActorSystem("recommendation-controller"))
+  with ImplicitSender
+  with WordSpecLike
+  with Matchers
+  with BeforeAndAfterAll {
   import controllers.RecommendationController.Messages._
   import controllers.RecommendationController.Responses._
 

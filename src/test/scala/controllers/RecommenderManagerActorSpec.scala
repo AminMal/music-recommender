@@ -1,9 +1,15 @@
 package ir.ac.usc
 package controllers
 
-import akka.actor.{ActorRef, Props}
+import akka.actor.{ActorRef, ActorSystem, Props}
+import akka.testkit.{ImplicitSender, TestKit}
+import org.scalatest.{BeforeAndAfterAll, Matchers, WordSpecLike}
 
-class RecommenderManagerActorSpec extends ScommenderBaseTestkit {
+class RecommenderManagerActorSpec extends TestKit(ActorSystem("recommendation-manager"))
+  with ImplicitSender
+  with WordSpecLike
+  with Matchers
+  with BeforeAndAfterAll {
 
   import RecommenderManagerActor.Messages._
 

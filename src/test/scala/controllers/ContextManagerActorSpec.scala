@@ -1,11 +1,19 @@
 package ir.ac.usc
 package controllers
 
-import akka.actor.{ActorRef, Props}
+import akka.actor.{ActorRef, ActorSystem, Props}
 import models.{SongDTO, User}
-import org.apache.spark.mllib.recommendation.MatrixFactorizationModel
 
-class ContextManagerActorSpec extends ScommenderBaseTestkit {
+import akka.testkit.{ImplicitSender, TestKit}
+import org.apache.spark.mllib.recommendation.MatrixFactorizationModel
+import org.scalatest.{BeforeAndAfterAll, Matchers, WordSpecLike}
+
+class ContextManagerActorSpec extends TestKit(ActorSystem("context-manager"))
+  with ImplicitSender
+  with WordSpecLike
+  with Matchers
+  with BeforeAndAfterAll {
+
   import ContextManagerActor.Messages._
   import ContextManagerActor.Responses._
   val contextManagerActor: ActorRef = system.actorOf(Props[ContextManagerActor])
