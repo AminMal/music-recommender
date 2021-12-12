@@ -1,21 +1,25 @@
 package ir.ac.usc
 package controllers
 
-import conf.ALSDefaultConf
+import conf.{ALSConfig, RecommenderDataPaths => Paths}
 import controllers.ContextManagerActor.Messages._
 import controllers.ContextManagerActor.Responses
 import models.{SongDTO, User}
 import utils.ALSBuilder
-import utils.DataFrames.{ratingsRddF, trainRddF}
-import conf.{RecommenderDataPaths => Paths}
+import utils.DataFrames.ratingsRddF
 
 import java.time.temporal.ChronoUnit.SECONDS
-import akka.pattern.pipe
+import akka.pattern.{ask, pipe}
 import akka.actor.{Actor, ActorLogging, ActorRef}
+import HttpServer.configManagerActor
+import controllers.ConfigManagerActor.Messages._
+
+import akka.util.Timeout
 import org.apache.spark.sql.SaveMode
 
 import java.time.LocalTime
 import java.time.temporal.ChronoUnit
+import scala.concurrent.duration.DurationInt
 import scala.util.{Failure, Success, Try}
 
 
@@ -60,11 +64,18 @@ private[controllers] class ContextManagerSlaveActor extends Actor with ActorLogg
 
     case UpdateModel =>
       import context.dispatcher
-      timeTrack {
-        ratingsRddF map (ALSBuilder.forConfig(ALSDefaultConf).run) map(
-            SuccessfulUpdateOnModel.apply
-          ) pipeTo sender
-      } (operationName = Some("updating model"))
+      implicit val getConfTimeout: Timeout = 2.seconds
+      val configFuture = (configManagerActor ? GetCurrentConf).mapTo[ALSConfig]
+      val modelFuture = for {
+        config <- configFuture
+        ratings <- ratingsRddF
+      } yield {
+        timeTrack {
+          ALSBuilder.forConfig(config).run(ratings)
+        } (operationName = Some("creating als model"))
+      }
+
+      modelFuture map(SuccessfulUpdateOnModel.apply) pipeTo sender
 
   }
 
