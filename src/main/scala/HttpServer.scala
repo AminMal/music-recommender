@@ -1,6 +1,6 @@
 package ir.ac.usc
 
-import controllers.{ApplicationStatusController, ContextManagerActor, RecommendationController, RecommenderManagerActor}
+import controllers.{ApplicationStatusController, ConfigManagerActor, ContextManagerActor, RecommendationController, RecommenderManagerActor}
 
 import akka.http.scaladsl.Http
 import akka.util.Timeout
@@ -38,7 +38,8 @@ object HttpServer {
   val contextManagerActor: ActorRef = system.actorOf(Props[ContextManagerActor])
   val recommenderManager: ActorRef = system.actorOf(Props[RecommenderManagerActor])
   val applicationController: ActorRef = system.actorOf(Props[ApplicationStatusController])
+  val configManagerActor: ActorRef = system.actorOf(Props[ConfigManagerActor])
 
-  def newRecommenderActor: Future[ActorRef] =
+  def newRecommenderActor(): Future[ActorRef] =
     (recommenderManager ? NewRecommenderActor).mapTo[ActorRef]
 }
