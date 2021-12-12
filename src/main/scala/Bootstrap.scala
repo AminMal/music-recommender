@@ -12,7 +12,9 @@ import spray.json.RootJsonFormat
 import controllers.RecommendationController.Responses._
 
 import akka.stream.Materializer
-import controllers.ContextManagerActor.Messages.{AddUser, AddUserRating}
+import controllers.ContextManagerActor.Messages.AddUserRating
+
+import conf.ALSConfig
 
 object Bootstrap {
 
@@ -21,7 +23,7 @@ object Bootstrap {
   final val spark = SparkSession
     .builder()
     .appName("scommender")
-    .config("spark.master", "local")  // todo, this needs to be removed in production
+    .config("spark.master", "local[4]")  // todo, this needs to be removed in production
     .getOrCreate()
 
   println("--- initialized spark session ---")
@@ -48,5 +50,6 @@ object Bootstrap {
     implicit val messageFormatter: RootJsonFormat[ResponseMessage] = jsonFormat1(ResponseMessage.apply)
     implicit val addUserFormat: RootJsonFormat[User] = jsonFormat3(User.apply)
     implicit val songDtoFormatter: RootJsonFormat[SongDTO] = jsonFormat6(SongDTO.apply)
+    implicit val alsConfigFormatter: RootJsonFormat[ALSConfig] = jsonFormat7(ALSConfig)
   }
 }
