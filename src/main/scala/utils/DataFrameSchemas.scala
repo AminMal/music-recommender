@@ -29,4 +29,11 @@ object DataFrameSchemas {
     )
   )
 
+  val testStruct: StructType = StructType(
+    Seq(
+      StructField(name = "user_id", dataType = DataTypes.LongType),
+      StructField(name = "song_id", dataType = DataTypes.LongType)
+    )
+  )
+
 }
