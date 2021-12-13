@@ -48,6 +48,7 @@ class ContextManagerActor extends Actor with ActorLogging {
     case SuccessfulUpdateOnModel(model) =>
       context.become(receiveWithLatestModel(model))
       sender() ! PoisonPill
+      HttpServer.performanceTestActor ! PerformanceEvaluatorActor.Messages.EvaluateUsingAllMethods(model)
 
       /*
       *   Data append messages
