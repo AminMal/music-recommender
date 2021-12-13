@@ -26,6 +26,11 @@ object Bootstrap {
     .config("spark.master", "local[4]")  // todo, this needs to be removed in production
     .getOrCreate()
 
+  import utils.SparkFunctions._
+  spark.udf.register("geterr", getError)
+  spark.udf.register("getstate", getState)
+  spark.udf.register("fMeasure", fMeasure)
+
   println("--- initialized spark session ---")
 
   /**
