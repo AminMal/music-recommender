@@ -1,11 +1,19 @@
 package ir.ac.usc
 package controllers
 
-import akka.actor.{ActorRef, Props}
+import akka.actor.{ActorRef, ActorSystem, Props}
 import controllers.ContextManagerActor.Responses.CMOperationResult
 import models.{SongDTO, User}
 
-class ContextManagerSlaveActorSpec extends ScommenderBaseTestkit {
+import akka.testkit.{ImplicitSender, TestKit}
+import org.scalatest.{BeforeAndAfterAll, Matchers, WordSpecLike}
+
+class ContextManagerSlaveActorSpec extends TestKit(ActorSystem("context-manager-slave"))
+  with ImplicitSender
+  with WordSpecLike
+  with Matchers
+  with BeforeAndAfterAll {
+
   import controllers.ContextManagerActor.Messages._
 
   def newSlave(): ActorRef = system.actorOf(Props[ContextManagerSlaveActor])

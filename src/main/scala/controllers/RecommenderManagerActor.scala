@@ -1,7 +1,7 @@
 package ir.ac.usc
 package controllers
 
-import akka.actor.{Actor, ActorRef, Props}
+import akka.actor.{Actor, ActorRef}
 import akka.pattern.{ask, pipe}
 import org.apache.spark.mllib.recommendation.MatrixFactorizationModel
 import HttpServer.contextManagerActor
@@ -19,7 +19,7 @@ class RecommenderManagerActor extends Actor {
   import context.dispatcher
   val contextManagerMessageTimeout: Timeout = Timeout(5, TimeUnit.SECONDS)
 
-  def newRecommender(): ActorRef = context.actorOf(Props[RecommendationController])
+  def newRecommender(): ActorRef = context.actorOf(RecommendationController.props)
 
   def receive: Receive = {
     case NewRecommenderActor =>

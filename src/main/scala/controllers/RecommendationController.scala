@@ -1,9 +1,9 @@
 package ir.ac.usc
 package controllers
 
-import akka.actor.{Actor, ActorLogging, ActorRef, PoisonPill}
+import akka.actor.{Actor, ActorLogging, ActorRef, PoisonPill, Props}
 import models.Song
-import utils.ResultsHelper
+import utils.{ResultParser, ResultParserImpl}
 
 import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server.Directives._
@@ -19,12 +19,10 @@ import org.apache.spark.mllib.recommendation.MatrixFactorizationModel
 
 import scala.concurrent.Future
 
-class RecommendationController extends Actor with ActorLogging {
+class RecommendationController(resultParser: ResultParser) extends Actor with ActorLogging {
 
   import RecommendationController.Messages._
   import RecommendationController.Responses._
-
-  val resultsHelper = new ResultsHelper()
 
   override def receive: Receive = initialReceive
 
@@ -50,12 +48,12 @@ class RecommendationController extends Actor with ActorLogging {
 
   def receiveWithModel(model: MatrixFactorizationModel): Receive = {
     case GetRecommendations(userId, count) =>
-      val userOpt = resultsHelper.getUserInfo(userId)
+      val userOpt = resultParser.getUserInfo(userId)
       val recommendationResult = userOpt.map { user =>
         log.info(s"Found user: $user")
         val recommendations = model.recommendProducts(user.userId, count)
         log.info(s"Got ratings: ${recommendations.toSeq}")
-        val songs = recommendations.map(rating => resultsHelper.getSongInfo(rating.product))
+        val songs = recommendations.map(rating => resultParser.getSongInfo(rating.product))
 
         RecommendationResult(
           userId = userId,
@@ -71,6 +69,9 @@ class RecommendationController extends Actor with ActorLogging {
 }
 
 object RecommendationController {
+
+  def props: Props = Props(new RecommendationController(new ResultParserImpl()))
+
   object Messages {
     case class UpdateContext(model: MatrixFactorizationModel)
     case class GetRecommendations(userId: Int, count: Int = 6)
@@ -100,7 +101,7 @@ object RecommendationController {
 
   def routes(implicit timeout: Timeout): Route = path("recommend" / IntNumber) { userId =>
     parameter("count".as[Int].withDefault(6)) { count =>
-      val recommenderFuture: Future[ActorRef] = newRecommenderActor
+      val recommenderFuture: Future[ActorRef] = newRecommenderActor()
       val result = recommenderFuture.map { recommender =>
         (recommender ? GetRecommendations(userId, count))
           .mapTo[RecommendationResult]

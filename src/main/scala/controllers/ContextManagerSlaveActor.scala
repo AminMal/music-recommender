@@ -1,17 +1,25 @@
 package ir.ac.usc
 package controllers
 
-import Bootstrap.system
-import conf.ALSDefaultConf
+import conf.{ALSConfig, RecommenderDataPaths => Paths}
 import controllers.ContextManagerActor.Messages._
 import controllers.ContextManagerActor.Responses
 import models.{SongDTO, User}
 import utils.ALSBuilder
-import utils.DataFrames.ratingsRDD
-import conf.{RecommenderDataPaths => Paths}
+import utils.DataFrames.ratingsRddF
+
+import java.time.temporal.ChronoUnit.SECONDS
+import akka.pattern.{ask, pipe}
 import akka.actor.{Actor, ActorLogging, ActorRef}
+import HttpServer.configManagerActor
+import controllers.ConfigManagerActor.Messages._
+
+import akka.util.Timeout
 import org.apache.spark.sql.SaveMode
 
+import java.time.LocalTime
+import java.time.temporal.ChronoUnit
+import scala.concurrent.duration.DurationInt
 import scala.util.{Failure, Success, Try}
 
 
@@ -20,6 +28,9 @@ private[controllers] class ContextManagerSlaveActor extends Actor with ActorLogg
   import Bootstrap.spark
   import spark.implicits._
   import ContextManagerSlaveActor._
+
+  override def postStop(): Unit =
+    log.info(s"(${self.path.name}) got poison pill from parent")
 
   def receive: Receive = {
     case request: (AddUserRating, ActorRef) =>
@@ -52,13 +63,20 @@ private[controllers] class ContextManagerSlaveActor extends Actor with ActorLogg
       } (parent = sender(), replyTo = replyTo)
 
     case UpdateModel =>
-      val model = ALSBuilder.forConfig(ALSDefaultConf).run(
-        ratingsRDD
-      )
-      log.info(s"model refreshed")
-      sender() ! SuccessfulUpdateOnModel(model)
+      import context.dispatcher
+      implicit val getConfTimeout: Timeout = 2.seconds
+      val configFuture = (configManagerActor ? GetCurrentConf).mapTo[ALSConfig]
+      val modelFuture = for {
+        config <- configFuture
+        ratings <- ratingsRddF
+      } yield {
+        timeTrack {
+          ALSBuilder.forConfig(config).run(ratings)
+        } (operationName = Some("creating als model"))
+      }
 
-    case unexpectedMessage => system.deadLetters ! unexpectedMessage
+      modelFuture map(SuccessfulUpdateOnModel.apply) pipeTo sender
+
   }
 
 }
@@ -75,4 +93,12 @@ object ContextManagerSlaveActor {
       case Success(_) =>
         parent ! OperationBindResult(SuccessfulOperation, replyTo)
     }
+
+  private def timeTrack[V](code: => V)(operationName: Option[String] = None, timeUnit: ChronoUnit = SECONDS): V = {
+    val start = LocalTime.now()
+    val result = code
+    val finish = LocalTime.now()
+    println(operationName.map(operation => s"Finished $operation, ").getOrElse("") + s"operation took ${timeUnit.between(start, finish)} seconds")
+    result
+  }
 }

@@ -1,6 +1,6 @@
 package ir.ac.usc
 
-import controllers.{ApplicationStatusController, ContextManagerActor, RecommendationController, RecommenderManagerActor}
+import controllers.{ApplicationStatusController, ConfigManagerActor, ContextManagerActor, PerformanceEvaluatorActor, RecommendationController, RecommenderManagerActor}
 
 import akka.http.scaladsl.Http
 import akka.util.Timeout
@@ -10,7 +10,9 @@ import conf.ServerConfig
 
 import akka.actor.{ActorRef, Props}
 import controllers.RecommenderManagerActor.Messages._
+
 import akka.pattern.ask
+
 import scala.concurrent.Future
 import java.util.concurrent.TimeUnit
 import scala.concurrent.duration.DurationInt
@@ -38,7 +40,9 @@ object HttpServer {
   val contextManagerActor: ActorRef = system.actorOf(Props[ContextManagerActor])
   val recommenderManager: ActorRef = system.actorOf(Props[RecommenderManagerActor])
   val applicationController: ActorRef = system.actorOf(Props[ApplicationStatusController])
+  val configManagerActor: ActorRef = system.actorOf(Props[ConfigManagerActor])
+  val performanceTestActor: ActorRef = system.actorOf(PerformanceEvaluatorActor.props)
 
-  def newRecommenderActor: Future[ActorRef] =
+  def newRecommenderActor(): Future[ActorRef] =
     (recommenderManager ? NewRecommenderActor).mapTo[ActorRef]
 }

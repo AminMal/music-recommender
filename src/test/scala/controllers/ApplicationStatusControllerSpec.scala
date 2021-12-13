@@ -1,10 +1,16 @@
 package ir.ac.usc
 package controllers
 
-import akka.actor.Props
+import akka.actor.{ActorSystem, Props}
+import akka.testkit.{ImplicitSender, TestKit}
+import org.scalatest.{BeforeAndAfterAll, Matchers, WordSpecLike}
 
 class ApplicationStatusControllerSpec
-  extends ScommenderBaseTestkit {
+  extends TestKit(ActorSystem("apllication-status-system"))
+    with ImplicitSender
+    with WordSpecLike
+    with Matchers
+    with BeforeAndAfterAll {
 
   "status controller" must {
     "return valid health check response" in {

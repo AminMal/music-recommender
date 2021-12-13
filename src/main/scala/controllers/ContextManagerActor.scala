@@ -1,7 +1,7 @@
 package ir.ac.usc
 package controllers
 
-import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, PoisonPill, Props}
+import akka.actor.{Actor, ActorContext, ActorLogging, ActorRef, ActorSystem, PoisonPill, Props}
 import models.{SongDTO, User}
 
 import akka.pattern.ask
@@ -12,8 +12,8 @@ import HttpServer.contextManagerActor
 
 import akka.http.scaladsl.model.StatusCodes
 import models.responses.{ErrorBody, FailureResponse, ResponseMessage, SuccessResponse}
-
 import conf.ALSDefaultConf
+
 import org.apache.spark.mllib.recommendation.MatrixFactorizationModel
 
 import scala.concurrent.duration.Duration
@@ -23,14 +23,14 @@ class ContextManagerActor extends Actor with ActorLogging {
 
   import ContextManagerActor.Messages._
   import ContextManagerActor.Responses._
+  import ContextManagerActor._
+
   val system: ActorSystem = context.system
 
   log.info("scheduler is starting to work")
   system.scheduler.scheduleAtFixedRate(
     initialDelay = Duration.Zero, interval = ALSDefaultConf.updateInterval
   )(() => self ! UpdateModel)(system.dispatcher)
-
-  def newSlave(): ActorRef = context.actorOf(Props[ContextManagerSlaveActor])
 
   override def receive: Receive = initialReceive
 
@@ -40,7 +40,7 @@ class ContextManagerActor extends Actor with ActorLogging {
     * */
     case UpdateModel =>
       log.info("updating model started on context manager actor")
-      newSlave() ! UpdateModel
+      newSlave ! UpdateModel
 
     case GetLatestModel =>
       sender() ! Option.empty[MatrixFactorizationModel]
@@ -48,18 +48,19 @@ class ContextManagerActor extends Actor with ActorLogging {
     case SuccessfulUpdateOnModel(model) =>
       context.become(receiveWithLatestModel(model))
       sender() ! PoisonPill
+      HttpServer.performanceTestActor ! PerformanceEvaluatorActor.Messages.EvaluateUsingAllMethods(model)
 
       /*
       *   Data append messages
       * */
     case request: AddUserRating =>
-      newSlave() ! (request, sender())
+      newSlave ! (request, sender())
 
     case request: AddUser =>
-      newSlave() ! (request, sender())
+      newSlave ! (request, sender())
 
     case request: AddSong =>
-      newSlave() ! (request, sender())
+      newSlave ! (request, sender())
 
       /*
       *   Slave messages
@@ -75,7 +76,7 @@ class ContextManagerActor extends Actor with ActorLogging {
     * */
     case UpdateModel =>
       log.info("updating model started on context manager actor")
-      newSlave() ! UpdateModel
+      newSlave ! UpdateModel
 
     case GetLatestModel =>
       sender() ! Option.apply[MatrixFactorizationModel](model)
@@ -89,13 +90,13 @@ class ContextManagerActor extends Actor with ActorLogging {
       * */
 
     case request: AddUserRating =>
-      newSlave() ! (request, sender())
+      newSlave ! (request, sender())
 
     case request: AddUser =>
-      newSlave() ! (request, sender())
+      newSlave ! (request, sender())
 
     case request: AddSong =>
-      newSlave() ! (request, sender())
+      newSlave ! (request, sender())
 
       /*
       *   Slave messages
@@ -108,6 +109,8 @@ class ContextManagerActor extends Actor with ActorLogging {
 }
 
 object ContextManagerActor {
+
+  private def newSlave(implicit context: ActorContext): ActorRef = context.actorOf(Props[ContextManagerSlaveActor])
 
   object Messages {
     case class AddUserRating(
