@@ -3,7 +3,6 @@ package evaluation
 
 import evaluation.MetricsEnum.MetricsEnum
 import org.apache.spark.mllib.recommendation.MatrixFactorizationModel
-import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.DataFrame
 
 trait EvaluationMethod {
