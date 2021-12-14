@@ -1,36 +1,27 @@
 package ir.ac.usc
 package controllers
 
-import akka.actor.{Actor, ActorLogging, ActorRef, PoisonPill, Props}
+import akka.actor.{Actor, ActorLogging, PoisonPill, Props}
 import models.Song
 import utils.{ResultParser, ResultParserImpl}
-
-import akka.http.scaladsl.model.StatusCodes
-import akka.http.scaladsl.server.Directives._
-import akka.util.Timeout
-import HttpServer.newRecommenderActor
-import controllers.RecommendationController.Responses.RecommendationResult
-
-import akka.http.scaladsl.server.Route
-import akka.pattern.ask
+import models.RecommendationResult
 import controllers.RecommendationController.defaultTrendingSongs
 
 import org.apache.spark.mllib.recommendation.MatrixFactorizationModel
 
-import scala.concurrent.Future
+import java.time.temporal.ChronoUnit
+
 
 class RecommendationController(resultParser: ResultParser) extends Actor with ActorLogging {
 
   import RecommendationController.Messages._
-  import RecommendationController.Responses._
-
+  import utils.Common.timeTrack
   override def receive: Receive = initialReceive
 
-  val defaultResult: Long => RecommendationResult = userId => RecommendationResult(
-    userId = userId,
-    songs = defaultTrendingSongs,
-    actorName = self.path.name
-  )
+  val defaultResult: Int => RecommendationResult = userId =>
+    new RecommendationResult(
+      userId = userId, songs = defaultTrendingSongs
+    )
 
   def initialReceive: Receive = {
     case UpdateContext(model) =>
@@ -38,29 +29,37 @@ class RecommendationController(resultParser: ResultParser) extends Actor with Ac
       log.info(s"update factorization model in recommender actor")
 
     case GetRecommendations(userId, count) =>
-      sender() ! RecommendationResult(
+      sender() ! new RecommendationResult(
         userId = userId,
-        songs = defaultTrendingSongs.take(count),
-        actorName = self.path.name
+        songs = defaultTrendingSongs.take(count)
       )
       self ! PoisonPill
   }
 
   def receiveWithModel(model: MatrixFactorizationModel): Receive = {
     case GetRecommendations(userId, count) =>
-      val userOpt = resultParser.getUserInfo(userId)
+      val userOpt = timeTrack {
+        resultParser.getUserInfo(userId)
+      } (operationName = Some("Get user info"), ChronoUnit.MILLIS)
+
       val recommendationResult = userOpt.map { user =>
         log.info(s"Found user: $user")
-        val recommendations = model.recommendProducts(user.userId, count)
-        log.info(s"Got ratings: ${recommendations.toSeq}")
-        val songs = recommendations.map(rating => resultParser.getSongInfo(rating.product))
 
-        RecommendationResult(
+        val recommendations = timeTrack {
+          model.recommendProducts(user.userId, count)
+        }(operationName = Some("Getting recommendations from model"), ChronoUnit.MILLIS)
+
+        log.info(s"Got ratings: ${recommendations.toSeq}")
+
+        val songs = timeTrack {
+          resultParser.getSongs(recommendations.map(_.product))
+        }(operationName = Some("Getting song info from recommendation result"), ChronoUnit.MILLIS)
+
+        new RecommendationResult(
           userId = userId,
-          songs = songs.filter(_.isDefined).map(_.get),
-          actorName = self.path.name
+          songs = songs
         )
-      }.getOrElse(defaultResult(userId.toLong))
+      }.getOrElse(defaultResult(userId))
 
       sender() ! recommendationResult
       self ! PoisonPill
@@ -76,16 +75,6 @@ object RecommendationController {
     case class UpdateContext(model: MatrixFactorizationModel)
     case class GetRecommendations(userId: Int, count: Int = 6)
   }
-  object Responses {
-    case class RecommendationResult(
-                                   userId: Long,
-                                   actorName: String,
-                                   songs: Seq[Song]
-                                   )
-  }
-
-  import Bootstrap.JsonImplicits._
-  import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
 
   val defaultTrendingSongs: Seq[Song] = Seq(
     Song(id = 125323, name = "Coloratura", Some("Coldplay")),
@@ -95,21 +84,4 @@ object RecommendationController {
     Song(id = 213632, name = "Lucky town", Some("Bruce Springsteen")),
     Song(id = 783294, name = "Paragon", Some("Soen"))
   )
-
-  import Messages._
-  import Bootstrap.system.dispatcher
-
-  def routes(implicit timeout: Timeout): Route = path("recommend" / IntNumber) { userId =>
-    parameter("count".as[Int].withDefault(6)) { count =>
-      val recommenderFuture: Future[ActorRef] = newRecommenderActor()
-      val result = recommenderFuture.map { recommender =>
-        (recommender ? GetRecommendations(userId, count))
-          .mapTo[RecommendationResult]
-      }.flatten
-
-      onSuccess(result) { res =>
-        complete(status = StatusCodes.OK, v = res)
-      }
-    }
-  }
 }
