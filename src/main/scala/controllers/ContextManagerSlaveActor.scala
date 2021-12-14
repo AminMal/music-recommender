@@ -1,25 +1,17 @@
 package ir.ac.usc
 package controllers
 
-import conf.{ALSConfig, RecommenderDataPaths => Paths}
+import conf.{RecommenderDataPaths => Paths}
 import controllers.ContextManagerActor.Messages._
-import controllers.ContextManagerActor.Responses
+import controllers.ContextManagerActor.Responses._
 import models.{SongDTO, User}
 import utils.ALSBuilder
 import utils.DataFrames.ratingsRddF
 
-import java.time.temporal.ChronoUnit.SECONDS
-import akka.pattern.{ask, pipe}
+import akka.pattern.pipe
 import akka.actor.{Actor, ActorLogging, ActorRef}
-import HttpServer.configManagerActor
-import controllers.ConfigManagerActor.Messages._
-
-import akka.util.Timeout
+import Bootstrap.services.{configurationManagementService => configService}
 import org.apache.spark.sql.SaveMode
-
-import java.time.LocalTime
-import java.time.temporal.ChronoUnit
-import scala.concurrent.duration.DurationInt
 import scala.util.{Failure, Success, Try}
 
 
@@ -28,6 +20,7 @@ private[controllers] class ContextManagerSlaveActor extends Actor with ActorLogg
   import Bootstrap.spark
   import spark.implicits._
   import ContextManagerSlaveActor._
+  import utils.Common.timeTrack
 
   override def postStop(): Unit =
     log.info(s"(${self.path.name}) got poison pill from parent")
@@ -37,6 +30,9 @@ private[controllers] class ContextManagerSlaveActor extends Actor with ActorLogg
       val (userRating, replyTo) = request
       handleDFAppend {
         (userRating.decoupled() :: Nil).toDF(AddUserRating.dfColNames: _*)
+          .write
+          .mode(SaveMode.Append)
+          .parquet(path = Paths.ratingsPath)
       } (parent = sender(), replyTo = replyTo)
 
     case (AddUser(user), replyTo: ActorRef) =>
@@ -64,8 +60,8 @@ private[controllers] class ContextManagerSlaveActor extends Actor with ActorLogg
 
     case UpdateModel =>
       import context.dispatcher
-      implicit val getConfTimeout: Timeout = 2.seconds
-      val configFuture = (configManagerActor ? GetCurrentConf).mapTo[ALSConfig]
+
+      val configFuture = configService.getLatestConfig
       val modelFuture = for {
         config <- configFuture
         ratings <- ratingsRddF
@@ -75,14 +71,14 @@ private[controllers] class ContextManagerSlaveActor extends Actor with ActorLogg
         } (operationName = Some("creating als model"))
       }
 
-      modelFuture map(SuccessfulUpdateOnModel.apply) pipeTo sender
+      modelFuture.map(SuccessfulUpdateOnModel.apply)
+        .pipeTo(sender)
 
   }
 
 }
 
 object ContextManagerSlaveActor {
-  import Responses._
   def handleDFAppend(code: => Unit)(parent: ActorRef, replyTo: ActorRef): Unit =
     Try(code) match {
       case Failure(exception) =>
@@ -93,12 +89,4 @@ object ContextManagerSlaveActor {
       case Success(_) =>
         parent ! OperationBindResult(SuccessfulOperation, replyTo)
     }
-
-  private def timeTrack[V](code: => V)(operationName: Option[String] = None, timeUnit: ChronoUnit = SECONDS): V = {
-    val start = LocalTime.now()
-    val result = code
-    val finish = LocalTime.now()
-    println(operationName.map(operation => s"Finished $operation, ").getOrElse("") + s"operation took ${timeUnit.between(start, finish)} seconds")
-    result
-  }
 }

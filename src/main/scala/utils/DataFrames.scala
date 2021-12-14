@@ -1,7 +1,7 @@
 package ir.ac.usc
 package utils
 
-import Bootstrap.{spark, system}
+import Bootstrap.{spark, materializer}
 
 import org.apache.spark.mllib.recommendation.Rating
 import org.apache.spark.rdd.RDD

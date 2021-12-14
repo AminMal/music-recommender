@@ -7,5 +7,6 @@ case class ResponseMessage(
 
 object ResponseMessage {
   final val ObjectWriteSuccessful = "data appended successfully"
-  final val InternalServerError = "internal server error"
+  final val InternalServerError   = "internal server error"
+  final val NotImplementedYet     = "Not implemented yet"
 }

@@ -1,30 +1,21 @@
 package ir.ac.usc
 package controllers
 
-import akka.actor.{Actor, ActorRef}
-import akka.pattern.{ask, pipe}
-import org.apache.spark.mllib.recommendation.MatrixFactorizationModel
-import HttpServer.contextManagerActor
-
-import akka.util.Timeout
+import akka.actor.{Actor, ActorRef, Props}
+import akka.pattern.pipe
 import controllers.RecommendationController.Messages.UpdateContext
-
-import java.util.concurrent.TimeUnit
-import scala.concurrent.Future
 
 
 class RecommenderManagerActor extends Actor {
   import controllers.RecommenderManagerActor.Messages._
-  import controllers.ContextManagerActor.Messages._
   import context.dispatcher
-  val contextManagerMessageTimeout: Timeout = Timeout(5, TimeUnit.SECONDS)
+  import Bootstrap.services.contextManagerService
 
   def newRecommender(): ActorRef = context.actorOf(RecommendationController.props)
 
   def receive: Receive = {
     case NewRecommenderActor =>
-      val latestModelOptional: Future[Option[MatrixFactorizationModel]] =
-        (contextManagerActor ? GetLatestModel)(contextManagerMessageTimeout).mapTo[Option[MatrixFactorizationModel]]
+      val latestModelOptional= contextManagerService.getLatestModel
 
       val futureActor = latestModelOptional.map { modelOpt =>
         val recommender = newRecommender()
@@ -38,6 +29,8 @@ class RecommenderManagerActor extends Actor {
 }
 
 object RecommenderManagerActor {
+
+  def props: Props = Props(new RecommenderManagerActor)
 
   object Messages {
     case object NewRecommenderActor

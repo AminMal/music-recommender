@@ -1,28 +1,20 @@
 package ir.ac.usc
 package controllers
 
-import akka.actor.{Actor, ActorLogging, Props}
+import akka.actor.{Actor, ActorLogging, PoisonPill, Props}
 import evaluation.{EvaluationMethod, EvaluationMode, FMeasureEvaluation, PrecisionRecallEvaluator, RmseEvaluation, ShuffledEvaluation}
 import evaluation.EvaluationMode.EvaluationMode
-
-import akka.pattern.ask
-import akka.util.Timeout
-import controllers.ContextManagerActor.Messages.GetLatestModel
-
 import utils.DataFrames
 import org.apache.spark.mllib.recommendation.MatrixFactorizationModel
 
-import java.util.concurrent.TimeUnit
-import scala.concurrent.Future
 
 class PerformanceEvaluatorActor extends Actor with ActorLogging {
 
   import PerformanceEvaluatorActor.Messages._
-  import HttpServer.contextManagerActor
 
   def receive: Receive = {
 
-    case EvaluateUsingAllMethods(model) =>
+    case EvaluateUsingAllMethods(model, mode) =>
 
       val ratings = DataFrames.ratingsDF
 
@@ -38,29 +30,32 @@ class PerformanceEvaluatorActor extends Actor with ActorLogging {
         shuffledEvaluator, rmseEvaluator, precisionAndRecallEvaluator, fMeasureEvaluator
       )
 
-      evaluationMethods.foreach { method =>
-        println(s"results for metrics: ${method.metric.toString} is:")
-        println("----------------------------------------------------")
-        method.evaluate(model).show(100)
-      }
-
-    case EvaluationRequest(mode, method) =>
-      val modelFuture: Future[Option[MatrixFactorizationModel]] = {
-        implicit val getModelTimeout: Timeout = Timeout(2, TimeUnit.SECONDS)
-        (contextManagerActor ? GetLatestModel).mapTo[Option[MatrixFactorizationModel]]
-      }
-
-      modelFuture.foreach { modelOpt =>
-        modelOpt.foreach { model =>
-          val result = method.evaluate(model)
-          if (mode == EvaluationMode.FireAndForget) {
-            result
-              .show(100)
-          } else if (mode == EvaluationMode.Wait) {
-            sender() ! result
+      mode match {
+        case EvaluationMode.FireAndForget =>
+          evaluationMethods.foreach { method =>
+            println(s"results for metrics: ${method.metric.toString} is:")
+            println("----------------------------------------------------")
+            method.evaluate(model).show(100)
           }
-        }
-      }(context.dispatcher)
+
+        case EvaluationMode.Wait =>
+          val evaluationDataFrames = evaluationMethods.map(_.evaluate(model))
+          sender() ! evaluationDataFrames
+      }
+      self ! PoisonPill
+
+
+    case EvaluationRequest(mode, method, model) =>
+      val result = method.evaluate(model)
+
+      mode match {
+        case EvaluationMode.FireAndForget =>
+          result.show(100)
+        case ir.ac.usc.evaluation.EvaluationMode.Wait =>
+          sender() ! result
+      }
+      self ! PoisonPill
+
   }
 
 }
@@ -69,10 +64,14 @@ object PerformanceEvaluatorActor {
   object Messages {
     case class EvaluationRequest(
                                 mode: EvaluationMode,
-                                method: EvaluationMethod
+                                method: EvaluationMethod,
+                                model: MatrixFactorizationModel
                                 )
 
-    case class EvaluateUsingAllMethods(model: MatrixFactorizationModel)
+    case class EvaluateUsingAllMethods(
+                                        model: MatrixFactorizationModel,
+                                        mode: EvaluationMode = EvaluationMode.FireAndForget
+                                      )
   }
 
   def props: Props = Props[PerformanceEvaluatorActor]

@@ -1,22 +1,12 @@
 package ir.ac.usc
 package controllers
 
-import akka.actor.{Actor, ActorContext, ActorLogging, ActorRef, ActorSystem, PoisonPill, Props}
+import akka.actor.{Actor, ActorContext, ActorLogging, ActorRef, PoisonPill, Props}
 import models.{SongDTO, User}
-
-import akka.pattern.ask
-import akka.http.scaladsl.server.Directives._
-import akka.http.scaladsl.server.Route
-import akka.util.Timeout
-import HttpServer.contextManagerActor
-
-import akka.http.scaladsl.model.StatusCodes
-import models.responses.{ErrorBody, FailureResponse, ResponseMessage, SuccessResponse}
 import conf.ALSDefaultConf
-
 import org.apache.spark.mllib.recommendation.MatrixFactorizationModel
-
 import scala.concurrent.duration.Duration
+import Bootstrap.services.{performanceEvaluatorService => performanceEvaluator}
 
 
 class ContextManagerActor extends Actor with ActorLogging {
@@ -25,12 +15,10 @@ class ContextManagerActor extends Actor with ActorLogging {
   import ContextManagerActor.Responses._
   import ContextManagerActor._
 
-  val system: ActorSystem = context.system
-
   log.info("scheduler is starting to work")
-  system.scheduler.scheduleAtFixedRate(
+  context.system.scheduler.scheduleAtFixedRate(
     initialDelay = Duration.Zero, interval = ALSDefaultConf.updateInterval
-  )(() => self ! UpdateModel)(system.dispatcher)
+  )(() => self ! UpdateModel)(context.dispatcher)
 
   override def receive: Receive = initialReceive
 
@@ -39,7 +27,7 @@ class ContextManagerActor extends Actor with ActorLogging {
     *    Matrix model messages
     * */
     case UpdateModel =>
-      log.info("updating model started on context manager actor")
+      log.info(s"updating model started on context manager actor: ${self.path}")
       newSlave ! UpdateModel
 
     case GetLatestModel =>
@@ -48,7 +36,7 @@ class ContextManagerActor extends Actor with ActorLogging {
     case SuccessfulUpdateOnModel(model) =>
       context.become(receiveWithLatestModel(model))
       sender() ! PoisonPill
-      HttpServer.performanceTestActor ! PerformanceEvaluatorActor.Messages.EvaluateUsingAllMethods(model)
+      performanceEvaluator.evaluateUsingAllMethodsDispatched(model)
 
       /*
       *   Data append messages
@@ -75,7 +63,7 @@ class ContextManagerActor extends Actor with ActorLogging {
     *    Matrix model messages
     * */
     case UpdateModel =>
-      log.info("updating model started on context manager actor")
+      log.info(s"updating model started on context manager actor: ${self.path}")
       newSlave ! UpdateModel
 
     case GetLatestModel =>
@@ -110,6 +98,8 @@ class ContextManagerActor extends Actor with ActorLogging {
 
 object ContextManagerActor {
 
+  def props: Props = Props(new ContextManagerActor)
+
   private def newSlave(implicit context: ActorContext): ActorRef = context.actorOf(Props[ContextManagerSlaveActor])
 
   object Messages {
@@ -141,63 +131,4 @@ object ContextManagerActor {
     case class OperationFailure(throwable: Throwable) extends CMOperationResult
     case class OperationBindResult(result: CMOperationResult, replyTo: ActorRef)
   }
-
-  import Bootstrap.JsonImplicits._
-  import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
-  import Responses._
-
-
-  private def completeWriteResult(result: CMOperationResult) = result match {
-    case SuccessfulOperation =>
-      complete(
-        status = StatusCodes.OK,
-        SuccessResponse.forMessage(
-          ResponseMessage.ObjectWriteSuccessful
-        )
-      )
-    case OperationFailure(_) =>
-      complete(
-        status = StatusCodes.InternalServerError,
-        FailureResponse.withError(
-          error = ErrorBody.InternalServerError
-        )
-      )
-  }
-
-  import Messages._
-
-  def routes(implicit timeout: Timeout): Route =
-    path("rating") {
-      post {
-        entity(as[AddUserRating]) { ratingRequest =>
-          val managerResponse = (contextManagerActor ? ratingRequest).mapTo[CMOperationResult]
-
-          onSuccess(managerResponse) (completeWriteResult)
-        }
-      }
-    } ~ path("user") {
-      post {
-        entity(as[User]) { user =>
-          val managerResponse = (contextManagerActor ? AddUser(user)).mapTo[CMOperationResult]
-
-          onSuccess(managerResponse) (completeWriteResult)
-        }
-      }
-    } ~ path("song") {
-      post {
-        entity(as[SongDTO]) { song =>
-          val managerResponse = (contextManagerActor ? AddSong(song)).mapTo[CMOperationResult]
-
-          onSuccess(managerResponse) (completeWriteResult)
-        }
-      }
-    } ~ path("force-update") {
-      put {
-        contextManagerActor ! UpdateModel
-        complete(
-          status = StatusCodes.OK,
-          SuccessResponse.forMessage("update request sent successfully")
-        )
-      }
-    }
 }
