@@ -5,6 +5,7 @@ import utils.DataFrames._
 import models.{Song, User}
 
 import scala.util.Try
+import org.apache.spark.sql.functions._
 
 class ResultParserImpl extends ResultParser {
 
@@ -24,5 +25,11 @@ class ResultParserImpl extends ResultParser {
           .head()
       )
     }.toOption
+
+  override def getSongs(songsIds: Seq[Int]): Seq[Song] = {
+    songsDF.filter(col("song_id") isin (songsIds: _*))
+      .collect().toSeq
+      .map(Song.fromRow)
+  }
 
 }

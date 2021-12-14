@@ -9,4 +9,6 @@ trait ResultParser {
 
   def getUserInfo(userId: Int): Option[User]
 
+  def getSongs(songsIds: Seq[Int]): Seq[Song]
+
 }
