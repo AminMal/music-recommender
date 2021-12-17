@@ -1,10 +1,11 @@
 package ir.ac.usc
 package controllers
 
-import akka.actor.{Actor, ActorLogging, PoisonPill, Props}
-import evaluation.{EvaluationMethod, EvaluationMode, FMeasureEvaluation, PrecisionRecallEvaluator, RmseEvaluation, ShuffledEvaluation}
 import evaluation.EvaluationMode.EvaluationMode
+import evaluation._
 import utils.DataFrames
+
+import akka.actor.{Actor, ActorLogging, PoisonPill, Props}
 import org.apache.spark.mllib.recommendation.MatrixFactorizationModel
 
 
@@ -17,9 +18,10 @@ class PerformanceEvaluatorActor extends Actor with ActorLogging {
     case EvaluateUsingAllMethods(model, mode) =>
 
       val ratings = DataFrames.ratingsDF
+      val testData = DataFrames.testDataDF
 
       val shuffledEvaluator = new ShuffledEvaluation(
-        trainingPercentage = 0.75, testingPercentage = 0.25, ratings = ratings
+        ratings, testData
       )
       val rmseEvaluator = RmseEvaluation.fromShuffled(shuffledEvaluator)
       val precisionAndRecallEvaluator = PrecisionRecallEvaluator.fromShuffled(shuffledEvaluator, threshold = 0.65)

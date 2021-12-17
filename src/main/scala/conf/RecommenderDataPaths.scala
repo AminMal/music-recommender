@@ -18,5 +18,6 @@ object RecommenderDataPaths {
   val trainPath: String               = baseDir + "train"
   val testPathCSV: String             = baseDir + "test.csv"
   val testPath: String                = baseDir + "test"
+  val latestModelPath: String         = baseDir + "latest_model"
 
 }

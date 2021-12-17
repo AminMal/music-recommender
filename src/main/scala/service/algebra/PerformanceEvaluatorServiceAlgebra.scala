@@ -2,6 +2,7 @@ package ir.ac.usc
 package service.algebra
 
 import evaluation.EvaluationMethod
+
 import org.apache.spark.mllib.recommendation.MatrixFactorizationModel
 import org.apache.spark.sql.DataFrame
 
@@ -13,5 +14,6 @@ trait PerformanceEvaluatorServiceAlgebra {
   def evaluateDispatched(model: MatrixFactorizationModel, method: EvaluationMethod): Unit
   def evaluateUsingAllMethods(model: MatrixFactorizationModel): Future[Seq[DataFrame]]
   def evaluateUsingAllMethodsDispatched(model: MatrixFactorizationModel): Unit
+  def evaluateDefaultModel(method: EvaluationMethod): Future[DataFrame]
 
 }

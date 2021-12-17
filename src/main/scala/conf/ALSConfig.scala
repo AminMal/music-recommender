@@ -18,5 +18,5 @@ case class ALSConfig(
                       alpha: Double,
                       block: Int,
                       seed: Long,
-                      implicitPreferences: Boolean = true
+                      implicitPreferences: Boolean = false
                     )

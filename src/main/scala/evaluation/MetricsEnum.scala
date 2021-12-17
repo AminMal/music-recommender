@@ -16,7 +16,7 @@ object MetricsEnum extends Enumeration {
   /* Implemented */
   val RMSE: MetricsEnum = Value("rmse")
   val Shuffled: MetricsEnum = Value("shuffled")
-  val PrecisionRecall: MetricsEnum = Value("precision and recall")
+  val PrecisionRecall: MetricsEnum = Value("precision-and-recall")
   val FMeasure: MetricsEnum = Value("F-Measure")
 
   def withNameOpt(name: String): Option[MetricsEnum] = Try(super.withName(name)).toOption

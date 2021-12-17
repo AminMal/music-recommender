@@ -1,14 +1,14 @@
 package ir.ac.usc
 package service.impl
 
+import controllers.ContextManagerActor.Messages._
+import controllers.ContextManagerActor.Responses._
+import models.{SongDTO, User}
 import service.algebra.ContextManagerServiceAlgebra
 
 import akka.actor.ActorRef
-import controllers.ContextManagerActor.Responses._
 import akka.pattern.ask
 import akka.util.Timeout
-import controllers.ContextManagerActor.Messages.{AddSong, AddUser, AddUserRating, GetLatestModel, UpdateModel}
-import models.{SongDTO, User}
 import org.apache.spark.mllib.recommendation.MatrixFactorizationModel
 
 import java.util.concurrent.TimeUnit
@@ -17,8 +17,8 @@ import scala.concurrent.Future
 class ContextManagerService(contextManagerActor: ActorRef) extends ContextManagerServiceAlgebra {
 
   private implicit val baseTimeout: Timeout = Timeout(50, TimeUnit.SECONDS)
-  override def updateModel(): Future[CMOperationResult] = {
-    (contextManagerActor ? UpdateModel).mapTo[CMOperationResult]
+  override def updateModel(): Unit = {
+    contextManagerActor ! UpdateModel
   }
 
   override def getLatestModel: Future[Option[MatrixFactorizationModel]] = {

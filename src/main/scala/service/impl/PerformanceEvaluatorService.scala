@@ -1,20 +1,24 @@
 package ir.ac.usc
 package service.impl
 
-import service.algebra.PerformanceEvaluatorServiceAlgebra
+import controllers.PerformanceEvaluatorActor.Messages._
+import evaluation.{EvaluationMethod, EvaluationMode}
+import exception.ModelNotTrainedYetException
+import service.algebra.{ContextManagerServiceAlgebra, PerformanceEvaluatorServiceAlgebra}
 
 import akka.actor.ActorRef
+import akka.pattern.ask
 import akka.util.Timeout
-import evaluation.{EvaluationMethod, EvaluationMode}
 import org.apache.spark.mllib.recommendation.MatrixFactorizationModel
 import org.apache.spark.sql.DataFrame
 
 import java.util.concurrent.TimeUnit
-import scala.concurrent.Future
-import akka.pattern.ask
-import controllers.PerformanceEvaluatorActor.Messages._
+import scala.concurrent.{ExecutionContext, Future}
 
-class PerformanceEvaluatorService(performanceEvaluator: () => ActorRef) extends PerformanceEvaluatorServiceAlgebra {
+class PerformanceEvaluatorService(
+                                   performanceEvaluator: () => ActorRef,
+                                   contextService: ContextManagerServiceAlgebra
+                                 ) extends PerformanceEvaluatorServiceAlgebra {
 
   implicit val timeout: Timeout = Timeout(50, TimeUnit.SECONDS)
 
@@ -42,5 +46,12 @@ class PerformanceEvaluatorService(performanceEvaluator: () => ActorRef) extends 
 
   override def evaluateUsingAllMethodsDispatched(model: MatrixFactorizationModel): Unit = {
     performanceEvaluator() ! EvaluateUsingAllMethods(model)
+  }
+
+  override def evaluateDefaultModel(method: EvaluationMethod): Future[DataFrame] = {
+    contextService.getLatestModel.flatMap { modelOpt =>
+      val model = modelOpt.getOrElse(throw ModelNotTrainedYetException)
+      evaluate(model, method)
+    }(ExecutionContext.Implicits.global)
   }
 }

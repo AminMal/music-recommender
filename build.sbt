@@ -19,6 +19,9 @@ lazy val root = (project in file("."))
       AkkaStreams,
       AkkaHttp,
       SprayJson,
-      AkkaTest
+      AkkaTest,
+      MockitoMock,
+      AkkaStreamTestKit,
+      AkkaHttpTestKit
     )
   )

@@ -1,17 +1,15 @@
 package ir.ac.usc
 package utils
 
-import Bootstrap.{spark, materializer}
+import Bootstrap.{materializer, spark}
+import conf.{RecommenderDataPaths => Paths}
+import utils.DataFrameSchemas._
 
+import akka.NotUsed
+import akka.stream.scaladsl.{Flow, Keep, RunnableGraph, Sink, Source}
 import org.apache.spark.mllib.recommendation.Rating
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.{DataFrame, Row}
-import conf.{RecommenderDataPaths => Paths}
-
-import DataFrameSchemas._
-import akka.NotUsed
-import akka.stream.scaladsl.RunnableGraph
-import akka.stream.scaladsl.{Flow, Keep, Sink, Source}
 
 import scala.concurrent.{ExecutionContext, Future}
 
