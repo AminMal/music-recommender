@@ -1,29 +1,11 @@
 package ir.ac.usc
 package service
 
-import service.algebra.{
-  ApplicationStatusServiceAlgebra,
-  ConfigurationManagementServiceAlgebra,
-  ContextManagerServiceAlgebra,
-  PerformanceEvaluatorServiceAlgebra,
-  RecommendationServiceAlgebra
-}
-import service.impl.{
-  ApplicationStatusService,
-  ConfigurationManagerService,
-  ContextManagerService,
-  PerformanceEvaluatorService,
-  RecommendationService
-}
+import controllers._
+import service.algebra._
+import service.impl._
 
 import akka.actor.ActorSystem
-import controllers.{
-  ApplicationStatusController,
-  ConfigManagerActor,
-  ContextManagerActor,
-  PerformanceEvaluatorActor,
-  RecommenderManagerActor
-}
 
 
 trait ServiceModule {
@@ -49,7 +31,8 @@ trait ServiceModule {
 
   lazy val performanceEvaluatorService: PerformanceEvaluatorServiceAlgebra =
     new PerformanceEvaluatorService(
-      () => system.actorOf(PerformanceEvaluatorActor.props)
+      () => system.actorOf(PerformanceEvaluatorActor.props),
+      contextManagerService
     )
 
   lazy val recommendationManagerService: RecommendationServiceAlgebra =
