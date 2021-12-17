@@ -1,26 +1,30 @@
 package ir.ac.usc
 package controllers
 
+import Bootstrap.services.{configurationManagementService => configService}
 import conf.{RecommenderDataPaths => Paths}
 import controllers.ContextManagerActor.Messages._
 import controllers.ContextManagerActor.Responses._
 import models.{SongDTO, User}
 import utils.ALSBuilder
-import utils.DataFrames.ratingsRddF
+import utils.DataFrames.trainRddF
 
-import akka.pattern.pipe
 import akka.actor.{Actor, ActorLogging, ActorRef}
-import Bootstrap.services.{configurationManagementService => configService}
+import akka.pattern.pipe
 import org.apache.spark.sql.SaveMode
+
+import java.io.File
+import java.time.temporal.ChronoUnit
 import scala.util.{Failure, Success, Try}
 
 
 private[controllers] class ContextManagerSlaveActor extends Actor with ActorLogging {
-  import ContextManagerActor.Responses._
   import Bootstrap.spark
-  import spark.implicits._
-  import ContextManagerSlaveActor._
   import utils.Common.timeTrack
+
+  import ContextManagerActor.Responses._
+  import ContextManagerSlaveActor._
+  import spark.implicits._
 
   override def postStop(): Unit =
     log.info(s"(${self.path.name}) got poison pill from parent")
@@ -61,11 +65,11 @@ private[controllers] class ContextManagerSlaveActor extends Actor with ActorLogg
     case UpdateModel =>
       import context.dispatcher
 
-      val configFuture = configService.getLatestConfig
       val modelFuture = for {
-        config <- configFuture
-        ratings <- ratingsRddF
+        config <- configService.getLatestConfig
+        ratings <- trainRddF
       } yield {
+        log.info(s"updating model for config: $config")
         timeTrack {
           ALSBuilder.forConfig(config).run(ratings)
         } (operationName = Some("creating als model"))
@@ -73,6 +77,19 @@ private[controllers] class ContextManagerSlaveActor extends Actor with ActorLogg
 
       modelFuture.map(SuccessfulUpdateOnModel.apply)
         .pipeTo(sender)
+
+    case Save(model) =>
+    timeTrack {
+      Try{
+        new File(Paths.latestModelPath).delete()
+        log.info("deleted latest model")
+        model.save(spark.sparkContext, Paths.latestModelPath)
+        log.info("inserted latest model")
+      }
+    } (operationName = Some("saving latest recommender"), ChronoUnit.MILLIS)
+
+      sender() ! SuccessfulOperation
+
 
   }
 

@@ -1,12 +1,17 @@
 package ir.ac.usc
 package controllers
 
-import akka.actor.{Actor, ActorContext, ActorLogging, ActorRef, PoisonPill, Props}
-import models.{SongDTO, User}
-import conf.ALSDefaultConf
-import org.apache.spark.mllib.recommendation.MatrixFactorizationModel
-import scala.concurrent.duration.Duration
 import Bootstrap.services.{performanceEvaluatorService => performanceEvaluator}
+import Bootstrap.spark
+import conf.{ALSDefaultConf, RecommenderDataPaths}
+import models.{SongDTO, User}
+import utils.Common.timeTrack
+
+import akka.actor.{Actor, ActorContext, ActorLogging, ActorRef, PoisonPill, Props}
+import org.apache.spark.mllib.recommendation.MatrixFactorizationModel
+
+import java.time.temporal.ChronoUnit
+import scala.concurrent.duration.Duration
 
 
 class ContextManagerActor extends Actor with ActorLogging {
@@ -28,7 +33,19 @@ class ContextManagerActor extends Actor with ActorLogging {
     * */
     case UpdateModel =>
       log.info(s"updating model started on context manager actor: ${self.path}")
-      newSlave ! UpdateModel
+      try {
+        val model = timeTrack {
+          MatrixFactorizationModel
+            .load(spark.sparkContext, RecommenderDataPaths.latestModelPath)
+        } (operationName = Some("loading latest model"), ChronoUnit.MILLIS)
+
+        context.become(receiveWithLatestModel(model))
+        performanceEvaluator.evaluateUsingAllMethodsDispatched(model)
+      } catch {
+        case _: Exception =>
+          log.warning("could not find latest model")
+          newSlave ! UpdateModel
+      }
 
     case GetLatestModel =>
       sender() ! Option.empty[MatrixFactorizationModel]
@@ -36,6 +53,7 @@ class ContextManagerActor extends Actor with ActorLogging {
     case SuccessfulUpdateOnModel(model) =>
       context.become(receiveWithLatestModel(model))
       sender() ! PoisonPill
+      newSlave ! Save(model)
       performanceEvaluator.evaluateUsingAllMethodsDispatched(model)
 
       /*
@@ -56,6 +74,9 @@ class ContextManagerActor extends Actor with ActorLogging {
     case OperationBindResult(result, replyTo) =>
       replyTo ! result
       sender() /* slave */ ! PoisonPill
+
+    case _: CMOperationResult =>
+      sender() ! PoisonPill
   }
 
   def receiveWithLatestModel(model: MatrixFactorizationModel): Receive = {
@@ -71,6 +92,7 @@ class ContextManagerActor extends Actor with ActorLogging {
 
     case SuccessfulUpdateOnModel(model) =>
       context.become(receiveWithLatestModel(model))
+      newSlave ! Save(model)
       sender() ! PoisonPill
 
       /*
@@ -93,6 +115,9 @@ class ContextManagerActor extends Actor with ActorLogging {
     case OperationBindResult(result, replyTo) =>
       replyTo ! result
       sender() /* slave */ ! PoisonPill
+
+    case _: CMOperationResult =>
+      sender() ! PoisonPill
   }
 }
 
@@ -123,6 +148,7 @@ object ContextManagerActor {
 
     case object GetLatestModel
 
+    case class Save(model: MatrixFactorizationModel)
   }
   object Responses {
     sealed trait CMOperationResult // ContextManagerOperationResult
