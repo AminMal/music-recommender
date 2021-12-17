@@ -1,16 +1,16 @@
 package ir.ac.usc
 package evaluation
 import evaluation.MetricsEnum.MetricsEnum
+
 import org.apache.spark.mllib.recommendation.MatrixFactorizationModel
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.functions._
 
 class PrecisionRecallEvaluator(
-                                override val testingPercentage: Double,
-                                override val trainingPercentage: Double,
                                 override val ratings: DataFrame,
+                                override val testData: DataFrame,
                                 val threshold: Double
-                              ) extends ShuffledEvaluation(trainingPercentage, testingPercentage, ratings) {
+                              ) extends ShuffledEvaluation(ratings, testData) {
 
   override val metric: MetricsEnum = MetricsEnum.PrecisionRecall
 
@@ -41,9 +41,8 @@ class PrecisionRecallEvaluator(
 object PrecisionRecallEvaluator {
   def fromShuffled(shuffledEvaluation: ShuffledEvaluation, threshold: Double): PrecisionRecallEvaluator =
     new PrecisionRecallEvaluator(
-      testingPercentage = shuffledEvaluation.testingPercentage,
-      trainingPercentage = shuffledEvaluation.trainingPercentage,
       ratings = shuffledEvaluation.ratings,
+      testData = shuffledEvaluation.testData,
       threshold = threshold
     )
 }
