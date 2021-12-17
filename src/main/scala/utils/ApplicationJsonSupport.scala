@@ -4,15 +4,22 @@ package utils
 import conf.ALSConfig
 import controllers.ApplicationStatusController.Responses.{HealthCheckResponse, ModelActivationResponse}
 import controllers.ContextManagerActor.Messages.AddUserRating
-import models.{Song, SongDTO, User, RecommendationResult, Meta}
-import models.responses.{ErrorBody, FailureResponse, ResponseMessage, SuccessResponse}
+import models.responses._
+import models._
 
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
-import spray.json.RootJsonFormat
+import org.apache.spark.sql.DataFrame
+import spray.json._
 
 
-trait ApplicationJsonSupport extends SprayJsonSupport {
-  import spray.json.DefaultJsonProtocol._
+trait ApplicationJsonSupport extends SprayJsonSupport with DefaultJsonProtocol {
+
+  implicit class StringOps(value: String) {
+    def isNumeric: Boolean = {
+      value matches "\\d+[.]?\\d*"
+    }
+  }
+
   implicit val modelActivationResponseFormatter: RootJsonFormat[ModelActivationResponse] = jsonFormat1(ModelActivationResponse)
   implicit val healthCheckResponseFormatter: RootJsonFormat[HealthCheckResponse] = jsonFormat2(HealthCheckResponse)
   implicit val songFormatter: RootJsonFormat[Song] = jsonFormat3(Song.apply)
@@ -31,4 +38,31 @@ trait ApplicationJsonSupport extends SprayJsonSupport {
   implicit val songDtoFormatter: RootJsonFormat[SongDTO] = jsonFormat6(SongDTO.apply)
   implicit val alsConfigFormatter: RootJsonFormat[ALSConfig] = jsonFormat7(ALSConfig)
 
+  implicit val dfJsonFormatter: RootJsonWriter[DataFrame] = obj =>  {
+    val mapArray = obj.collect().map { row =>
+      row.getValuesMap[Any](obj.columns).map {
+        case (key, value) => key -> value.toString
+      }
+    }.toSeq
+
+    val jsonedObjects = mapArray.map { objMapped =>
+      JsObject.apply(
+        objMapped.map {
+          case (key, value) => key -> {
+            if (value.isNumeric)
+              JsNumber(BigDecimal(value))
+            else JsString(value)
+          }
+        }
+      )
+    }
+
+    if (jsonedObjects.length == 1) {
+      jsonedObjects.head
+    } else {
+      JsArray(jsonedObjects.toVector)
+    }
+  }
 }
+
+object ApplicationJsonSupport extends ApplicationJsonSupport
