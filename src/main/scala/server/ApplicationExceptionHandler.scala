@@ -14,6 +14,10 @@ object ApplicationExceptionHandler {
     case se: ScommenderException => complete(
       status = se.status, v = se.toResponseBody
     )
+    case other =>
+      other.printStackTrace()
+      val se = ScommenderException.adopt(other)
+      complete(status = se.status, v = se.toResponseBody)
   }
 
 }
