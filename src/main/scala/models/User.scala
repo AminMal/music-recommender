@@ -9,9 +9,7 @@ case class User(
                userId: Int,
                cityId: Option[Int],
                gender: String
-               ) {
-  def decoupled() = (userId.toLong, cityId.getOrElse(0), gender)
-}
+               )
 
 object User {
   val dfColNames = Seq("user_id", "city", "gender")
