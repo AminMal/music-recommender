@@ -9,7 +9,7 @@ import scala.concurrent.duration.DurationInt
 object HttpServer {
 
   implicit val timeout: Timeout = Timeout(60, TimeUnit.SECONDS)
-  import Bootstrap.{actorSystem, materializer, routesAndService, appConfig}
+  import Bootstrap.{actorSystem, materializer, routes, appConfig}
   import actorSystem.dispatcher
 
   val interface: String = appConfig.getString("scommender.server.interface")
@@ -19,7 +19,7 @@ object HttpServer {
     interface = interface, port = port
   )
     .withMaterializer(materializer)
-    .bind(routesAndService.routes)
+    .bind(routes.routes)
     .map(_.addToCoordinatedShutdown(10.seconds))(actorSystem.dispatcher)
     .map { binding =>
       println(s"--- started server on port $port ---")
