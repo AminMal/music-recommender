@@ -132,9 +132,7 @@ object ContextManagerActor {
                             userId: Long,
                             songId: Long,
                             rating: Double
-                            ) {
-      def decoupled() = (userId, songId, rating)
-    }
+                            )
 
     object AddUserRating {
       final val dfColNames = Seq("user_id", "song_id", "target")

@@ -2,9 +2,8 @@ package ir.ac.usc
 package controllers
 
 import akka.actor.{Actor, ActorLogging, PoisonPill, Props}
-import models.Song
+import models.{RecommendationResult, SongDTO}
 import utils.{ResultParser, ResultParserImpl}
-import models.RecommendationResult
 import controllers.RecommendationController.defaultTrendingSongs
 
 import org.apache.spark.mllib.recommendation.MatrixFactorizationModel
@@ -52,7 +51,7 @@ class RecommendationController(resultParser: ResultParser) extends Actor with Ac
         log.info(s"Got ratings: ${recommendations.toSeq}")
 
         val songs = timeTrack {
-          resultParser.getSongs(recommendations.map(_.product))
+          resultParser.getSongDTOs(recommendations)
         }(operationName = Some("Getting song info from recommendation result"), ChronoUnit.MILLIS)
 
         new RecommendationResult(
@@ -76,12 +75,12 @@ object RecommendationController {
     case class GetRecommendations(userId: Int, count: Int = 6)
   }
 
-  val defaultTrendingSongs: Seq[Song] = Seq(
-    Song(id = 125323, name = "Coloratura", Some("Coldplay")),
-    Song(id = 321534, name = "Do I wanna know?", Some("Arctic monkeys")),
-    Song(id = 413416, name = "Love and hate", Some("Michael Kiwanuka")),
-    Song(id = 782351, name = "Riders on the storm", Some("The doors")),
-    Song(id = 213632, name = "Lucky town", Some("Bruce Springsteen")),
-    Song(id = 783294, name = "Paragon", Some("Soen"))
+  val defaultTrendingSongs: Seq[SongDTO] = Seq(
+    SongDTO.mock(id = 125323L, name = "Coloratura", artistName = "Coldplay"),
+    SongDTO.mock(id = 321534L, name = "Do I wanna know?", artistName = "Arctic monkeys"),
+    SongDTO.mock(id = 413416L, name = "Love and hate", artistName = "Michael Kiwanuka"),
+    SongDTO.mock(id = 782351L, name = "Riders on the storm", artistName = "The doors"),
+    SongDTO.mock(id = 213632L, name = "Lucky town", artistName = "Bruce Springsteen"),
+    SongDTO.mock(id = 783294L, name = "Paragon", artistName = "Soen")
   )
 }

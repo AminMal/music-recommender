@@ -8,7 +8,7 @@ import scala.concurrent.duration.FiniteDuration
  * Default configuration object for ALS algorithm
  */
 object ALSDefaultConf extends ALSConfig(
-  rank = 10, iterations = 10, lambda = 0.01, block = -1, seed = 12345L, alpha = 1.0
+  rank = 8, iterations = 12, lambda = 0.01, block = -1, alpha = 1.0
 ) {
 
   val updateInterval: FiniteDuration = FiniteDuration(5, TimeUnit.MINUTES)

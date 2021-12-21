@@ -6,6 +6,8 @@ import service.algebra._
 import service.impl._
 
 import akka.actor.ActorSystem
+import controllers.ApplicationStatusController.Responses.HealthCheckResponse
+import scala.concurrent.{ExecutionContext, Future}
 
 
 trait ServiceModule {
@@ -39,6 +41,16 @@ trait ServiceModule {
     new RecommendationService(
       system.actorOf(RecommenderManagerActor.props)
     )(system.dispatcher)
+
+  /* since modules are evaluated lazily, this initiate method just invokes the first lazy evaluation
+     and makes things run, although, you can send any HTTP request to do this, but this method is called
+     right after server start to have a smoother flow */
+  def initiate(implicit ec: ExecutionContext): Future[HealthCheckResponse] = {
+    applicationStatusService.health().map { response =>
+      println(s"--- initialized application service, initial health check response: ${response.currentTime} ---")
+      response
+    }
+  }
 
 }
 

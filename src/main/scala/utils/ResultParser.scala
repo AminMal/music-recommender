@@ -1,14 +1,14 @@
 package ir.ac.usc
 package utils
 
-import models.{Song, User}
+import models.{SongDTO, User}
+
+import org.apache.spark.mllib.recommendation.Rating
 
 trait ResultParser {
 
-  def getSongInfo(songId: Int): Option[Song]
-
   def getUserInfo(userId: Int): Option[User]
 
-  def getSongs(songsIds: Seq[Int]): Seq[Song]
+  def getSongDTOs(predictions: Seq[Rating]): Seq[SongDTO]
 
 }

@@ -34,9 +34,7 @@ object Bootstrap {
   implicit val actorSystem: ActorSystem = ActorSystem("scommender")
   implicit val materializer: Materializer = Materializer.matFromSystem
 
-  val services: ServiceModule = new ServiceModule {
-    override val system: ActorSystem = actorSystem
-  }
+  val services: ServiceModule = ServiceModule.forSystem(actorSystem)
 
-  val routesAndService: RoutesModule = new RoutesModule(services)
+  val routes: RoutesModule = new RoutesModule(services)
 }

@@ -17,6 +17,6 @@ case class ALSConfig(
                       lambda: Double,
                       alpha: Double,
                       block: Int,
-                      seed: Long,
+                      seed: Long = System.nanoTime(),
                       implicitPreferences: Boolean = false
                     )
