@@ -33,7 +33,7 @@ private[controllers] class ContextManagerSlaveActor extends Actor with ActorLogg
     case request: (AddUserRating, ActorRef) =>
       val (userRating, replyTo) = request
       handleDFAppend {
-        (userRating.decoupled() :: Nil).toDF(AddUserRating.dfColNames: _*)
+        (userRating :: Nil).toDF(AddUserRating.dfColNames: _*)
           .write
           .mode(SaveMode.Append)
           .parquet(path = Paths.ratingsPath)
@@ -41,9 +41,8 @@ private[controllers] class ContextManagerSlaveActor extends Actor with ActorLogg
 
     case (AddUser(user), replyTo: ActorRef) =>
       /* user validations should be done on another service */
-      val newUserDF = (
-        user.decoupled() :: Nil
-        ).toDF(User.dfColNames: _*)
+      val newUserDF = (user :: Nil)
+        .toDF(User.dfColNames: _*)
 
       handleDFAppend {
         newUserDF.write
@@ -52,9 +51,8 @@ private[controllers] class ContextManagerSlaveActor extends Actor with ActorLogg
       }(parent = sender(), replyTo = replyTo)
 
     case (AddSong(song), replyTo: ActorRef) =>
-      val newSongDF = (
-        song.decoupled() :: Nil
-        ).toDF(SongDTO.dfColNames: _*)
+      val newSongDF = (song :: Nil)
+        .toDF(SongDTO.dfColNames: _*)
 
       handleDFAppend {
         newSongDF.write
