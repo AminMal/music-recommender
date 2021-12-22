@@ -12,15 +12,12 @@ import akka.util.Timeout
 import org.apache.spark.mllib.recommendation.MatrixFactorizationModel
 import org.apache.spark.sql.DataFrame
 
-import java.util.concurrent.TimeUnit
 import scala.concurrent.{ExecutionContext, Future}
 
 class PerformanceEvaluatorService(
                                    performanceEvaluator: () => ActorRef,
                                    contextService: ContextManagerServiceAlgebra
-                                 ) extends PerformanceEvaluatorServiceAlgebra {
-
-  implicit val timeout: Timeout = Timeout(50, TimeUnit.SECONDS)
+                                 )(implicit timeout: Timeout) extends PerformanceEvaluatorServiceAlgebra {
 
   override def evaluate(model: MatrixFactorizationModel, method: EvaluationMethod): Future[DataFrame] = {
     (

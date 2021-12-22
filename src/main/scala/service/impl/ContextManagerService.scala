@@ -14,9 +14,10 @@ import org.apache.spark.mllib.recommendation.MatrixFactorizationModel
 import java.util.concurrent.TimeUnit
 import scala.concurrent.Future
 
-class ContextManagerService(contextManagerActor: ActorRef) extends ContextManagerServiceAlgebra {
+class ContextManagerService(contextManagerActor: ActorRef)(
+                           implicit timeout: Timeout
+) extends ContextManagerServiceAlgebra {
 
-  private implicit val baseTimeout: Timeout = Timeout(50, TimeUnit.SECONDS)
   override def updateModel(): Unit = {
     contextManagerActor ! UpdateModel
   }

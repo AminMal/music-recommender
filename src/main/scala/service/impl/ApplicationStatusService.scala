@@ -9,13 +9,13 @@ import akka.actor.ActorRef
 import akka.pattern.ask
 import akka.util.Timeout
 
-import java.util.concurrent.TimeUnit
 import scala.concurrent.Future
 
 
-class ApplicationStatusService(statusControllerActor: ActorRef) extends ApplicationStatusServiceAlgebra {
+class ApplicationStatusService(statusControllerActor: ActorRef)(
+                              implicit timeout: Timeout
+) extends ApplicationStatusServiceAlgebra {
 
-  implicit val timeout: Timeout = Timeout(30, TimeUnit.SECONDS)
   override def health(): Future[HealthCheckResponse] = {
     (statusControllerActor ? HealthCheck).mapTo[HealthCheckResponse]
   }
