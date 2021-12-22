@@ -7,13 +7,16 @@ import service.impl._
 
 import akka.actor.ActorSystem
 import controllers.ApplicationStatusController.Responses.HealthCheckResponse
+
+import akka.util.Timeout
 import scala.concurrent.{ExecutionContext, Future}
 
 
-trait ServiceModule {
+sealed trait ServiceModule {
 
-  /* Only implementation of actor system is required to get started */
+  /* Only implementation of actor system, and providing timeout for requests is required to get started */
   val system: ActorSystem
+  implicit val timeout: Timeout
 
   lazy val applicationStatusService: ApplicationStatusServiceAlgebra =
     new ApplicationStatusService(
@@ -40,7 +43,7 @@ trait ServiceModule {
   lazy val recommendationManagerService: RecommendationServiceAlgebra =
     new RecommendationService(
       system.actorOf(RecommenderManagerActor.props)
-    )(system.dispatcher)
+    )(system.dispatcher, timeout)
 
   /* since modules are evaluated lazily, this initiate method just invokes the first lazy evaluation
      and makes things run, although, you can send any HTTP request to do this, but this method is called
@@ -55,7 +58,8 @@ trait ServiceModule {
 }
 
 object ServiceModule {
-  def forSystem(actorSystem: ActorSystem): ServiceModule = new ServiceModule {
+  def forSystem(actorSystem: ActorSystem)(implicit to: Timeout): ServiceModule = new ServiceModule {
     override val system: ActorSystem = actorSystem
+    override implicit val timeout: Timeout = to
   }
 }
