@@ -18,6 +18,11 @@ import java.time.temporal.ChronoUnit
 import scala.util.{Failure, Success, Try}
 
 
+/**
+ * This actor is used to do time taking, and blocking tasks that context manager actor
+ * wants to do. for each command, a new reference is created as a child of context manager actor
+ * and gets killed right after the work is done.
+ */
 private[controllers] class ContextManagerSlaveActor extends Actor with ActorLogging {
   import Bootstrap.spark
   import utils.Common.timeTrack
@@ -94,7 +99,7 @@ private[controllers] class ContextManagerSlaveActor extends Actor with ActorLogg
 }
 
 object ContextManagerSlaveActor {
-  def handleDFAppend(code: => Unit)(parent: ActorRef, replyTo: ActorRef): Unit =
+  private def handleDFAppend(code: => Unit)(parent: ActorRef, replyTo: ActorRef): Unit =
     Try(code) match {
       case Failure(exception) =>
         parent ! OperationBindResult(

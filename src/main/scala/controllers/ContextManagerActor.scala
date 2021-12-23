@@ -14,6 +14,11 @@ import java.time.temporal.ChronoUnit
 import scala.concurrent.duration.Duration
 
 
+/**
+ * This actor is the main actor of the application, takes the responsibility of (automatically) updating
+ * Matrix factorization model, managing slaves in order to create models, add data (users, songs, ratings).
+ * There is only one reference of this actor available and created throughout the application.
+ */
 class ContextManagerActor extends Actor with ActorLogging {
 
   import ContextManagerActor.Messages._
@@ -123,10 +128,17 @@ class ContextManagerActor extends Actor with ActorLogging {
 
 object ContextManagerActor {
 
+  /**
+   * Generates context manager actor Props in order to create new reference of this actor.
+   * @return Props of this actor.
+   */
   def props: Props = Props(new ContextManagerActor)
 
   private def newSlave(implicit context: ActorContext): ActorRef = context.actorOf(Props[ContextManagerSlaveActor])
 
+  /**
+   * Messages that this actor accepts.
+   */
   object Messages {
     case class AddUserRating(
                             userId: Long,
@@ -148,6 +160,10 @@ object ContextManagerActor {
 
     case class Save(model: MatrixFactorizationModel)
   }
+
+  /**
+   * Responses that this actor generates.
+   */
   object Responses {
     sealed trait CMOperationResult // ContextManagerOperationResult
     case class SuccessfulUpdateOnModel(model: MatrixFactorizationModel)

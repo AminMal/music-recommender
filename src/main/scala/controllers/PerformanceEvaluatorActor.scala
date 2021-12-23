@@ -8,7 +8,9 @@ import utils.DataFrames
 import akka.actor.{Actor, ActorLogging, PoisonPill, Props}
 import org.apache.spark.mllib.recommendation.MatrixFactorizationModel
 
-
+/**
+ * This actor takes the responsibility of evaluating models based on whatever evaluation method that is requested.
+ */
 class PerformanceEvaluatorActor extends Actor with ActorLogging {
 
   import PerformanceEvaluatorActor.Messages._
@@ -63,6 +65,9 @@ class PerformanceEvaluatorActor extends Actor with ActorLogging {
 }
 
 object PerformanceEvaluatorActor {
+  /**
+   * Messages that this actor accepts
+   */
   object Messages {
     case class EvaluationRequest(
                                 mode: EvaluationMode,
@@ -76,5 +81,9 @@ object PerformanceEvaluatorActor {
                                       )
   }
 
+  /**
+   * Generates performance evaluator actor Props in order to create new reference of this actor.
+   * @return props of this actor
+   */
   def props: Props = Props[PerformanceEvaluatorActor]
 }

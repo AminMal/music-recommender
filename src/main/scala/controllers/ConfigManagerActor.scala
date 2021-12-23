@@ -6,6 +6,9 @@ import conf.{ALSConfig, ALSDefaultConf}
 import akka.actor.{Actor, ActorLogging, Props}
 
 
+/**
+ * This actor takes care of ALS configurations that the application uses in order to make recommendations.
+ */
 class ConfigManagerActor extends Actor with ActorLogging {
   import Bootstrap.services
 
@@ -31,12 +34,23 @@ class ConfigManagerActor extends Actor with ActorLogging {
 
 object ConfigManagerActor {
 
+  /**
+   * Generates configuration manager actor Props in order to create new reference of this actor.
+   * @return Props of configuration manager actor.
+   */
   def props: Props = Props(new ConfigManagerActor)
 
+  /**
+   * Messages that this actor accepts.
+   */
   object Messages {
     case class UpdateConfig(config: ALSConfig, force: Boolean = false)
     case object GetCurrentConf
   }
+
+  /**
+   * Responses that this actor generates.
+   */
   object Response {
     case class ConfigurationsUpdated(latestConf: ALSConfig)
   }
