@@ -12,6 +12,9 @@ import akka.util.Timeout
 import scala.concurrent.{ExecutionContext, Future}
 
 
+/**
+ * This trait holds all the services required inside.
+ */
 sealed trait ServiceModule {
 
   /* Only implementation of actor system, and providing timeout for requests is required to get started */
@@ -45,9 +48,12 @@ sealed trait ServiceModule {
       system.actorOf(RecommenderManagerActor.props)
     )(system.dispatcher, timeout)
 
-  /* since modules are evaluated lazily, this initiate method just invokes the first lazy evaluation
-     and makes things run, although, you can send any HTTP request to do this, but this method is called
-     right after server start to have a smoother flow */
+  /**
+   * since all the services in the trait are evaluated lazily, instead of waiting for the first http request,
+   * this method can be used.
+   * @param ec an execution context to map the result and print it.
+   * @return health check response wrapped in future
+   */
   def initiate(implicit ec: ExecutionContext): Future[HealthCheckResponse] = {
     applicationStatusService.health().map { response =>
       println(s"--- initialized application service, initial health check response: ${response.currentTime} ---")
@@ -58,6 +64,13 @@ sealed trait ServiceModule {
 }
 
 object ServiceModule {
+
+  /**
+   * Creates an instance of service module for given actor system
+   * @param actorSystem service actor system
+   * @param to timeout for messages
+   * @return a new instance of service module
+   */
   def forSystem(actorSystem: ActorSystem)(implicit to: Timeout): ServiceModule = new ServiceModule {
     override val system: ActorSystem = actorSystem
     override implicit val timeout: Timeout = to
