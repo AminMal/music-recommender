@@ -7,6 +7,13 @@ import org.apache.spark.mllib.recommendation.MatrixFactorizationModel
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.functions.expr
 
+
+/**
+ * Instances of this class can calculate f-measure (or f-score) of a model.
+ * @param ratings dataframe of original ratings
+ * @param testData data to test model with
+ * @param threshold predictions greater than this threshold are behaved as positives.
+ */
 class FMeasureEvaluation(
                           override val ratings: DataFrame,
                           override val testData: DataFrame,
