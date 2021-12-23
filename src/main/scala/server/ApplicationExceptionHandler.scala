@@ -6,6 +6,10 @@ import exception.ScommenderException
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.{ExceptionHandler, _}
 
+
+/**
+ * Singleton object that contains exception handler directive
+ */
 object ApplicationExceptionHandler {
 
   import utils.ApplicationJsonSupport._

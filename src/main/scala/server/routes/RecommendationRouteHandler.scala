@@ -8,6 +8,10 @@ import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import utils.ApplicationJsonSupport
 
+/**
+ * This class handles http requests for recommendation manager actor
+ * @param recommendationService recommendation service
+ */
 class RecommendationRouteHandler(recommendationService: RecommendationServiceAlgebra) {
 
   import RecommendationRouteHandler._

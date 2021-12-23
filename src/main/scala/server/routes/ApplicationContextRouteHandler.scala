@@ -12,6 +12,11 @@ import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import utils.ApplicationJsonSupport
 
+
+/**
+ * This class handles http requests for context manager actor
+ * @param contextManagerService context manager service
+ */
 class ApplicationContextRouteHandler(contextManagerService: ContextManagerServiceAlgebra) {
 
   import ApplicationContextRouteHandler._

@@ -10,6 +10,10 @@ import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 
 
+/**
+ * This class handles http requests for performance evaluator actor
+ * @param performanceEvaluatorService performance evaluator service
+ */
 class PerformanceEvaluatorRouteHandler(
                                         performanceEvaluatorService: PerformanceEvaluatorServiceAlgebra
                                       ) {

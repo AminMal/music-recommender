@@ -8,6 +8,10 @@ import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 
 
+/**
+ * Given service module, this class can handle http requests with fault tolerance
+ * @param services an instance of service module
+ */
 class RoutesModule(services: ServiceModule) {
 
   lazy val applicationRouteHandler = new ApplicationStatusRouteHandler(

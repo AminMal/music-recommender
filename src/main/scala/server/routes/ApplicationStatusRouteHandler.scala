@@ -9,6 +9,11 @@ import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import utils.ApplicationJsonSupport
 
+
+/**
+ * This class handles http requests for application status actor
+ * @param applicationService application status service
+ */
 class ApplicationStatusRouteHandler(applicationService: ApplicationStatusServiceAlgebra) {
 
   import ApplicationStatusRouteHandler._
