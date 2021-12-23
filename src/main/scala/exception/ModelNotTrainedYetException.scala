@@ -4,6 +4,10 @@ import models.responses.{ErrorBody, FailureResponse}
 
 import akka.http.scaladsl.model.{StatusCode, StatusCodes}
 
+
+/**
+ * Singleton object, indicating that there is no model currently available to make recommendations.
+ */
 object ModelNotTrainedYetException extends ScommenderException {
 
   override def toResponseBody: FailureResponse =
