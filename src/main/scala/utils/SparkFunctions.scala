@@ -1,6 +1,10 @@
 package ir.ac.usc
 package utils
 
+
+/**
+ * User defined functions used in program are stored here.
+ */
 object SparkFunctions {
 
   val getError: (Double, Double) => Double = (a,b) => {

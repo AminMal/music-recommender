@@ -12,6 +12,9 @@ import org.apache.spark.sql.DataFrame
 import spray.json._
 
 
+/**
+ * This trait holds all the json formatters for models used in domain.
+ */
 trait ApplicationJsonSupport extends SprayJsonSupport with JsonSnakecaseFormatSupport {
 
   implicit val modelActivationResponseFormatter: RootJsonFormat[ModelActivationResponse] = jsonFormat1(ModelActivationResponse)
@@ -40,4 +43,7 @@ trait ApplicationJsonSupport extends SprayJsonSupport with JsonSnakecaseFormatSu
   }
 }
 
+/**
+ * ApplicationJsonSupport companion object, so that can import object instead of extending trait
+ */
 object ApplicationJsonSupport extends ApplicationJsonSupport
