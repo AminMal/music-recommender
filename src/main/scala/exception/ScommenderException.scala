@@ -22,10 +22,14 @@ object ScommenderException {
    * @param throwable the original throwable
    * @return new instance of scommender exception
    */
-  def adopt(throwable: Throwable): ScommenderException = new ScommenderException {
-    override def toResponseBody: FailureResponse =
-      FailureResponse(error = ErrorBody(code = 500, message = Try(throwable.getMessage.take(20)).toOption))
+  def adopt(throwable: Throwable): ScommenderException = throwable match {
+    case se: ScommenderException => se
+    case other =>
+      new ScommenderException {
+        override def toResponseBody: FailureResponse =
+          FailureResponse(error = ErrorBody(code = 500, message = Try(other.getMessage.take(100)).toOption))
 
-    override def status: StatusCode = 500
+        override def status: StatusCode = 500
+      }
   }
 }
