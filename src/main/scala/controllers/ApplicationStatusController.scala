@@ -3,6 +3,8 @@ package controllers
 
 import akka.actor.{Actor, Props}
 import akka.pattern.pipe
+import ir.ac.usc.utils.box.BoxSupport
+
 import java.time.LocalDateTime
 
 /**
@@ -10,7 +12,7 @@ import java.time.LocalDateTime
  * meaning the live-ness, matrix model status and current local time.
  * Only one reference of this actor is created and available.
  */
-class ApplicationStatusController extends Actor {
+class ApplicationStatusController extends Actor with BoxSupport {
   import ApplicationStatusController.Messages._
   import ApplicationStatusController.Responses._
   import Bootstrap.services
@@ -20,9 +22,9 @@ class ApplicationStatusController extends Actor {
 
   def initialReceive: Receive = {
     case HealthCheck =>
-      val modelOptFuture = services.contextManagerService.getLatestModel
+      val modelBoxed = toBoxF(services.contextManagerService.getLatestModel)
 
-      modelOptFuture.map { modelOpt =>
+      modelBoxed.map { modelOpt =>
         HealthCheckResponse(matrixModelStatus = modelOpt.isDefined)
       } pipeTo sender()
   }

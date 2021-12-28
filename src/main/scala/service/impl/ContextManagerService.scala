@@ -23,8 +23,7 @@ class ContextManagerService(contextManagerActor: ActorRef)(
   }
 
   override def getLatestModel: Future[Option[MatrixFactorizationModel]] = {
-    implicit val getModelTimeout: Timeout = Timeout(2, TimeUnit.SECONDS)
-    (contextManagerActor ? GetLatestModel)(getModelTimeout).mapTo[Option[MatrixFactorizationModel]]
+    (contextManagerActor ? GetLatestModel).mapTo[Option[MatrixFactorizationModel]]
   }
 
   override def addUserRating(userId: Long, songId: Long, rating: Double): Future[CMOperationResult] = {

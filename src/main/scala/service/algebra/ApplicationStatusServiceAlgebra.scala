@@ -3,18 +3,18 @@ package service.algebra
 
 import controllers.ApplicationStatusController.Responses.HealthCheckResponse
 
-import scala.concurrent.Future
+import utils.box.{BoxF, BoxSupport}
 
 
 /**
  * Service representing application status actor features
  */
-trait ApplicationStatusServiceAlgebra {
+trait ApplicationStatusServiceAlgebra extends BoxSupport {
 
   /**
    * Application health check api
    * @return health check response wrapped in future
    */
-  def health(): Future[HealthCheckResponse]
+  def health(): BoxF[HealthCheckResponse]
 
 }
