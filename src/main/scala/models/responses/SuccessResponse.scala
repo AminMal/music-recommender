@@ -1,5 +1,6 @@
 package ir.ac.usc
 package models.responses
+import akka.http.scaladsl.model.{StatusCode, StatusCodes}
 
 
 /**
@@ -11,7 +12,9 @@ package models.responses
 case class SuccessResponse[D](
                              success: Boolean = true,
                              data: D
-                             )
+                             ) extends ScommenderResponse[D] {
+  override def status: StatusCode = StatusCodes.OK
+}
 
 object SuccessResponse {
   /**

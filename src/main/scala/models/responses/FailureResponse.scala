@@ -1,5 +1,6 @@
 package ir.ac.usc
 package models.responses
+import akka.http.scaladsl.model.StatusCode
 
 
 /**
@@ -10,4 +11,6 @@ package models.responses
 case class FailureResponse(
                           success: Boolean = false,
                           error: ErrorBody
-                          )
+                          ) extends ScommenderResponse[Nothing] {
+  override def status: StatusCode = StatusCode.int2StatusCode(error.code)
+}
