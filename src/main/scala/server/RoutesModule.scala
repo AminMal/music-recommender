@@ -14,27 +14,27 @@ import akka.http.scaladsl.server.Route
  */
 class RoutesModule(services: ServiceModule) {
 
-  lazy val applicationRouteHandler = new ApplicationStatusRouteHandler(
+  val applicationRouteHandler = new ApplicationStatusRouteHandler(
     services.applicationStatusService
-  )
+  )(scala.concurrent.ExecutionContext.Implicits.global)
 
-  lazy val contextRouteHandler = new ApplicationContextRouteHandler(
+  val contextRouteHandler = new ApplicationContextRouteHandler(
     services.contextManagerService
   )
 
-  lazy val configurationsRouteHandler = new ConfigurationsRouteHandler(
+  val configurationsRouteHandler = new ConfigurationsRouteHandler(
     services.configurationManagementService
   )
 
-  lazy val recommendationsRouteHandler = new RecommendationRouteHandler(
+  val recommendationsRouteHandler = new RecommendationRouteHandler(
     services.recommendationManagerService
   )
 
-  lazy val performanceRouteHandler = new PerformanceEvaluatorRouteHandler(
+  val performanceRouteHandler = new PerformanceEvaluatorRouteHandler(
     services.performanceEvaluatorService
   )
 
-  lazy val routes: Route = {
+  val routes: Route = {
     handleExceptions(ApplicationExceptionHandler.handler) {
       applicationRouteHandler.route ~
         contextRouteHandler.routes ~

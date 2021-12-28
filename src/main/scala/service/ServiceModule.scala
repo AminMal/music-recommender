@@ -15,11 +15,9 @@ import scala.concurrent.{ExecutionContext, Future}
 /**
  * This trait holds all the services required inside.
  */
-sealed trait ServiceModule {
+sealed class ServiceModule(val system: ActorSystem)(implicit timeout: Timeout) {
 
-  /* Only implementation of actor system, and providing timeout for requests is required to get started */
-  val system: ActorSystem
-  implicit val timeout: Timeout
+  import scala.concurrent.ExecutionContext.Implicits.global
 
   lazy val applicationStatusService: ApplicationStatusServiceAlgebra =
     new ApplicationStatusService(
@@ -47,20 +45,6 @@ sealed trait ServiceModule {
     new RecommendationService(
       system.actorOf(RecommenderManagerActor.props)
     )(system.dispatcher, timeout)
-
-  /**
-   * since all the services in the trait are evaluated lazily, instead of waiting for the first http request,
-   * this method can be used.
-   * @param ec an execution context to map the result and print it.
-   * @return health check response wrapped in future
-   */
-  def initiate(implicit ec: ExecutionContext): Future[HealthCheckResponse] = {
-    applicationStatusService.health().map { response =>
-      println(s"--- initialized application service, initial health check response: ${response.currentTime} ---")
-      response
-    }
-  }
-
 }
 
 object ServiceModule {
@@ -71,8 +55,6 @@ object ServiceModule {
    * @param to timeout for messages
    * @return a new instance of service module
    */
-  def forSystem(actorSystem: ActorSystem)(implicit to: Timeout): ServiceModule = new ServiceModule {
-    override val system: ActorSystem = actorSystem
-    override implicit val timeout: Timeout = to
-  }
+  def forSystem(actorSystem: ActorSystem)(implicit to: Timeout): ServiceModule =
+    new ServiceModule(actorSystem)
 }
