@@ -11,6 +11,8 @@ import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
 import org.apache.spark.sql.DataFrame
 import spray.json._
 
+import scala.reflect.ClassTag
+
 
 /**
  * This trait holds all the json formatters for models used in domain.
@@ -40,6 +42,13 @@ trait ApplicationJsonSupport extends SprayJsonSupport with JsonSnakecaseFormatSu
     } else {
       JsonParser(jsonArray.collect().mkString("[", ",", "]"))
     }
+  }
+
+  implicit def scommenderResponseWriter[T : ClassTag](
+                                                       implicit formatter: RootJsonFormat[T]
+                                                     ): RootJsonWriter[ScommenderResponse[T]] = {
+    case result: SuccessResponse[T] => successResponseFormatter(formatter).write(result)
+    case failed: FailureResponse => unsuccessResponseFormatter.write(failed)
   }
 }
 
