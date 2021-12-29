@@ -4,7 +4,7 @@ package service
 import models.{RecommendationResult, User}
 import org.scalatest.{AsyncWordSpec, Matchers}
 
-class RecommendationServiceSpec extends AsyncWordSpec with Matchers {
+class RecommendationServiceSpec extends BoxFWordSpecLike with Matchers {
 
   val provider = new ServiceProvider("recommendation-service")
   import provider._
@@ -18,7 +18,7 @@ class RecommendationServiceSpec extends AsyncWordSpec with Matchers {
   val count: Int = 4
 
   "recommender service" should {
-    "return recommendations for specific user" in {
+    "return recommendations for specific user" inBox {
       service.recommendationManagerService.getRecommendations(someUser.userId, count = count)
         .map { result =>
           assert(result.isInstanceOf[RecommendationResult] && result.songs.length == count)

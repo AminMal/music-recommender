@@ -25,12 +25,18 @@ trait ApplicationJsonSupport extends SprayJsonSupport with JsonSnakecaseFormatSu
   implicit val songDTOFormatter: RootJsonFormat[SongDTO] = jsonFormat6(SongDTO.apply)
   implicit val recommendationResultFormatter: RootJsonFormat[RecommendationResult] = jsonFormat3(RecommendationResult)
   implicit def successResponseFormatter[D](
-                                            implicit dataFormatter: RootJsonWriter[D]
+                                            implicit dataWriter: RootJsonWriter[D]
                                           ): RootJsonWriter[SuccessResponse[D]] = obj => {
     JsObject(
       "success" -> JsBoolean(obj.success),
-      "data" -> dataFormatter.write(obj.data)
+      "data" -> dataWriter.write(obj.data)
     )
+  }
+
+  implicit def successResponseReader[D](
+                                       implicit dataReader: RootJsonReader[D]
+                                       ): RootJsonReader[SuccessResponse[D]] = json => {
+    SuccessResponse(success = true, dataReader.read(json))
   }
 
   implicit val errorBodyFormatter: RootJsonFormat[ErrorBody] = jsonFormat2(ErrorBody.apply)

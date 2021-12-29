@@ -4,19 +4,19 @@ package service
 import conf.ALSDefaultConf
 import evaluation.{FMeasureEvaluation, PrecisionRecallEvaluator, RmseEvaluation, ShuffledEvaluation}
 import utils.{ALSBuilder, DataFrames}
+
+import utils.box.{BoxF, BoxSupport}
 import org.apache.spark.mllib.recommendation.MatrixFactorizationModel
-import org.scalatest.{AsyncWordSpec, Matchers}
+import org.scalatest.Matchers
 
-import scala.concurrent.Future
-
-class PerformanceEvaluatorServiceSpec extends AsyncWordSpec with Matchers {
+class PerformanceEvaluatorServiceSpec extends BoxFWordSpecLike with Matchers with BoxSupport {
 
   val provider = new ServiceProvider("performance-service")
   import provider._
 
-  private val newModel: Future[MatrixFactorizationModel] = {
+  private val newModel: BoxF[MatrixFactorizationModel] = {
     for {
-      ratings <- DataFrames.trainRddF
+      ratings <- toBoxF(DataFrames.trainRddF)
       model = ALSBuilder.forConfig(ALSDefaultConf).run(ratings)
     } yield model
   }
@@ -32,22 +32,22 @@ class PerformanceEvaluatorServiceSpec extends AsyncWordSpec with Matchers {
   private val fMeasure = FMeasureEvaluation.fromPrecisionRecall(precisionRecallEvaluator)
 
   "performance evaluator service" should {
-    "return predictions and original ratings using shuffled evaluation" in {
+    "return predictions and original ratings using shuffled evaluation" inBox {
 
-      val futurePerformanceDataset = for {
+      val performanceDatasetBox = for {
         model <- newModel
         evaluation <- service.performanceEvaluatorService.evaluate(
           model, method = shuffledMethod
         )
       } yield evaluation
 
-      futurePerformanceDataset.map { result =>
+      performanceDatasetBox.map { result =>
         result.show(50)
         assert(result.columns sameElements Array("user", "product", "rating", "target"))
       }
     }
 
-    "return precision and recall in PrecisionAndRecall evaluation mode" in {
+    "return precision and recall in PrecisionAndRecall evaluation mode" inBox {
       val futurePerformanceDataset = for {
         model <- newModel
         evaluation <- service.performanceEvaluatorService.evaluate(
@@ -61,7 +61,7 @@ class PerformanceEvaluatorServiceSpec extends AsyncWordSpec with Matchers {
       }
     }
 
-    "perform rmse evaluation in RmseEvaluation mode" in {
+    "perform rmse evaluation in RmseEvaluation mode" inBox {
       val futurePerformanceDataset = for {
         model <- newModel
         evaluation <- service.performanceEvaluatorService.evaluate(
@@ -75,7 +75,7 @@ class PerformanceEvaluatorServiceSpec extends AsyncWordSpec with Matchers {
       }
     }
 
-    "perform fMeasure evaluation in FMeasure Evaluation mode" in {
+    "perform fMeasure evaluation in FMeasure Evaluation mode" inBox {
       val futurePerformanceDataset = for {
         model <- newModel
         evaluation <- service.performanceEvaluatorService.evaluate(
