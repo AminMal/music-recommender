@@ -9,8 +9,16 @@ class BoxF[+T](val underlying: Box[Future[T]])(implicit ec: ExecutionContext) ex
   def map[V](f: T => V): BoxF[V] =
     new BoxF[V](underlying.map(_.map(f)))
 
-  def flatMap[V](f: T => Future[V]): BoxF[V] =
-    new BoxF[V](underlying.map(_.flatMap(f)))
+  def flatMap[V](f: T => BoxF[V]): BoxF[V] = {
+    val futureBox = underlying.flatMap { future =>
+      val unflatFutureInBox = future.map(f)
+      Box(unflatFutureInBox.map(_.underlying).map {
+        case Successful(value) => value
+        case Failed(cause) => throw cause
+      }.flatten)
+    }
+    toBoxF(futureBox)
+  }
 
   def foreach[U](f: Future[T] => U): Unit = underlying.foreach(f)
 

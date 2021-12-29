@@ -80,6 +80,8 @@ trait BoxSupport {
     )
 
   implicit def eitherToBoxMagnet[T](either: Either[Throwable, T]): BoxMagnet[T] = tryToBoxMagnet(either.toTry)
+
+  implicit def codeBlockToBoxMagnet[T](block: => T): BoxMagnet[T] = tryToBoxMagnet(Try(block))
 }
 
 object BoxSupport extends BoxSupport
