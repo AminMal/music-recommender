@@ -27,7 +27,7 @@ object ScommenderException {
     case other =>
       new ScommenderException {
         override def toResponseBody: FailureResponse =
-          FailureResponse(error = ErrorBody(code = 500, message = Try(other.getMessage.take(100)).toOption))
+          FailureResponse(error = ErrorBody(code = 500, message = Try(other.getMessage.take(140)).toOption))
 
         override def status: StatusCode = 500
       }

@@ -25,9 +25,13 @@ trait ApplicationJsonSupport extends SprayJsonSupport with JsonSnakecaseFormatSu
   implicit val songDTOFormatter: RootJsonFormat[SongDTO] = jsonFormat6(SongDTO.apply)
   implicit val recommendationResultFormatter: RootJsonFormat[RecommendationResult] = jsonFormat3(RecommendationResult)
   implicit def successResponseFormatter[D](
-                                            implicit dataFormatter: RootJsonFormat[D]
-                                          ): RootJsonFormat[SuccessResponse[D]] =
-    jsonFormat2(SuccessResponse[D])
+                                            implicit dataFormatter: RootJsonWriter[D]
+                                          ): RootJsonWriter[SuccessResponse[D]] = obj => {
+    JsObject(
+      "success" -> JsBoolean(obj.success),
+      "data" -> dataFormatter.write(obj.data)
+    )
+  }
 
   implicit val errorBodyFormatter: RootJsonFormat[ErrorBody] = jsonFormat2(ErrorBody.apply)
   implicit def unsuccessResponseFormatter: RootJsonFormat[FailureResponse] = jsonFormat2(FailureResponse.apply)
@@ -35,6 +39,7 @@ trait ApplicationJsonSupport extends SprayJsonSupport with JsonSnakecaseFormatSu
   implicit val messageFormatter: RootJsonFormat[ResponseMessage] = jsonFormat1(ResponseMessage.apply)
   implicit val addUserFormat: RootJsonFormat[User] = jsonFormat3(User.apply)
   implicit val alsConfigFormatter: RootJsonFormat[ALSConfig] = jsonFormat7(ALSConfig)
+
   implicit val dfJsonFormatter: RootJsonWriter[DataFrame] = df => {
     val jsonArray = df.toJSON
     if (df.take(2).length == 1) {
@@ -45,7 +50,7 @@ trait ApplicationJsonSupport extends SprayJsonSupport with JsonSnakecaseFormatSu
   }
 
   implicit def scommenderResponseWriter[T : ClassTag](
-                                                       implicit formatter: RootJsonFormat[T]
+                                                       implicit formatter: RootJsonWriter[T]
                                                      ): RootJsonWriter[ScommenderResponse[T]] = {
     case result: SuccessResponse[T] => successResponseFormatter(formatter).write(result)
     case failed: FailureResponse => unsuccessResponseFormatter.write(failed)

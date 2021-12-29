@@ -8,6 +8,7 @@ import models.{SongDTO, User}
 import utils.Common.timeTrack
 
 import akka.actor.{Actor, ActorContext, ActorLogging, ActorRef, PoisonPill, Props}
+import utils.box.BoxSupport
 import org.apache.spark.mllib.recommendation.MatrixFactorizationModel
 
 import java.time.temporal.ChronoUnit
@@ -19,7 +20,7 @@ import scala.concurrent.duration.Duration
  * Matrix factorization model, managing slaves in order to create models, add data (users, songs, ratings).
  * There is only one reference of this actor available and created throughout the application.
  */
-class ContextManagerActor extends Actor with ActorLogging {
+class ContextManagerActor extends Actor with ActorLogging with BoxSupport {
 
   import ContextManagerActor.Messages._
   import ContextManagerActor.Responses._
@@ -45,7 +46,7 @@ class ContextManagerActor extends Actor with ActorLogging {
         } (operationName = Some("loading latest model"), ChronoUnit.MILLIS)
 
         context.become(receiveWithLatestModel(model))
-        performanceEvaluator.evaluateUsingAllMethodsDispatched(model)
+//        performanceEvaluator.evaluateUsingAllMethodsDispatched(model)
       } catch {
         case _: Exception =>
           log.warning("could not find latest model")
@@ -53,31 +54,31 @@ class ContextManagerActor extends Actor with ActorLogging {
       }
 
     case GetLatestModel =>
-      sender() ! Option.empty[MatrixFactorizationModel]
+      sender() ! toBox(Option.empty[MatrixFactorizationModel])
 
     case SuccessfulUpdateOnModel(model) =>
       context.become(receiveWithLatestModel(model))
       sender() ! PoisonPill
       newSlave ! Save(model)
-      performanceEvaluator.evaluateUsingAllMethodsDispatched(model)
+//      performanceEvaluator.evaluateUsingAllMethodsDispatched(model)
 
       /*
       *   Data append messages
       * */
     case request: AddUserRating =>
-      newSlave ! (request, sender())
+      newSlave ! AddDataRequestWithSender(request, sender())
 
     case request: AddUser =>
-      newSlave ! (request, sender())
+      newSlave ! AddDataRequestWithSender(request, sender())
 
     case request: AddSong =>
-      newSlave ! (request, sender())
+      newSlave ! AddDataRequestWithSender(request, sender())
 
       /*
       *   Slave messages
       * */
     case OperationBindResult(result, replyTo) =>
-      replyTo ! result
+      replyTo ! toBox(result)
       sender() /* slave */ ! PoisonPill
 
     case _: CMOperationResult =>
@@ -93,7 +94,7 @@ class ContextManagerActor extends Actor with ActorLogging {
       newSlave ! UpdateModel
 
     case GetLatestModel =>
-      sender() ! Option.apply[MatrixFactorizationModel](model)
+      sender() ! toBox(Option.apply[MatrixFactorizationModel](model))
 
     case SuccessfulUpdateOnModel(model) =>
       context.become(receiveWithLatestModel(model))
@@ -105,20 +106,20 @@ class ContextManagerActor extends Actor with ActorLogging {
       * */
 
     case request: AddUserRating =>
-      newSlave ! (request, sender())
+      newSlave ! AddDataRequestWithSender(request, sender())
 
     case request: AddUser =>
-      newSlave ! (request, sender())
+      newSlave ! AddDataRequestWithSender(request, sender())
 
     case request: AddSong =>
-      newSlave ! (request, sender())
+      newSlave ! AddDataRequestWithSender(request, sender())
 
       /*
       *   Slave messages
       * */
 
     case OperationBindResult(result, replyTo) =>
-      replyTo ! result
+      replyTo ! toBox(result)
       sender() /* slave */ ! PoisonPill
 
     case _: CMOperationResult =>
@@ -140,11 +141,14 @@ object ContextManagerActor {
    * Messages that this actor accepts.
    */
   object Messages {
+    sealed trait AddDataRequest
+    case class AddDataRequestWithSender(request: AddDataRequest, replyTo: ActorRef)
+
     case class AddUserRating(
                             userId: Long,
                             songId: Long,
                             rating: Double
-                            )
+                            ) extends AddDataRequest
 
     object AddUserRating {
       final val dfColNames = Seq("user_id", "song_id", "target")
@@ -152,9 +156,9 @@ object ContextManagerActor {
 
     case object UpdateModel
 
-    case class AddUser(user: User)
+    case class AddUser(user: User) extends AddDataRequest
 
-    case class AddSong(song: SongDTO)
+    case class AddSong(song: SongDTO) extends AddDataRequest
 
     case object GetLatestModel
 

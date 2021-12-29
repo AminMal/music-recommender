@@ -5,6 +5,8 @@ import controllers.ContextManagerActor.Messages.AddUserRating
 import controllers.ContextManagerActor.Responses.CMOperationResult
 import models.{SongDTO, User}
 
+import akka.Done
+import utils.box.BoxF
 import org.apache.spark.mllib.recommendation.MatrixFactorizationModel
 
 import scala.concurrent.Future
@@ -24,7 +26,7 @@ trait ContextManagerServiceAlgebra {
    * fetch latest matrix factorization model that application is using
    * @return if a trained model exists, that model is returned, else empty value for Option[MatrixFactorizationModel]
    */
-  def getLatestModel: Future[Option[MatrixFactorizationModel]]
+  def getLatestModel: BoxF[Option[MatrixFactorizationModel]]
 
   /**
    * add a song rating for a user
@@ -33,28 +35,28 @@ trait ContextManagerServiceAlgebra {
    * @param rating rating to the song
    * @return operation result, could be failed or successful
    */
-  def addUserRating(userId: Long, songId: Long, rating: Double): Future[CMOperationResult]
+  def addUserRating(userId: Long, songId: Long, rating: Double): BoxF[Done]
 
   /**
    * add a song rating for a user
    * @param request object of type AddUserRating, holding userId, songId, rating
    * @return operation result, could be failed or successful
    */
-  def addUserRating(request: AddUserRating): Future[CMOperationResult]
+  def addUserRating(request: AddUserRating): BoxF[Done]
 
   /**
    * add a user to users
    * @param user user to add
    * @return operation result, could be failed or successful
    */
-  def addUser(user: User): Future[CMOperationResult]
+  def addUser(user: User): BoxF[Done]
 
   /**
    * add a song to songs
    * @param song song to add
    * @return operation result, could be failed or successful
    */
-  def addSong(song: SongDTO): Future[CMOperationResult]
+  def addSong(song: SongDTO): BoxF[Done]
 
 
 }

@@ -5,11 +5,16 @@ import akka.actor.{Actor, ActorRef, Props}
 import akka.pattern.pipe
 import controllers.RecommendationController.Messages.UpdateContext
 
+import utils.box.BoxSupport
+import org.apache.spark.mllib.recommendation.MatrixFactorizationModel
+
+import scala.concurrent.Future
+
 
 /**
  * This actor controls recommendation requests and slave actors.
  */
-class RecommenderManagerActor extends Actor {
+class RecommenderManagerActor extends Actor with BoxSupport {
   import controllers.RecommenderManagerActor.Messages._
   import context.dispatcher
   import Bootstrap.services.contextManagerService
@@ -18,15 +23,15 @@ class RecommenderManagerActor extends Actor {
 
   def receive: Receive = {
     case NewRecommenderActor =>
-      val latestModelOptional= contextManagerService.getLatestModel
 
-      val futureActor = latestModelOptional.map { modelOpt =>
-        val recommender = newRecommender()
-        modelOpt.foreach(model => recommender ! UpdateContext(model))
-        recommender
-      }
+      val recommenderBox = for {
+        modelOpt <- contextManagerService.getLatestModel
+        recommender = newRecommender()
+        _ = modelOpt.foreach(model => recommender ! UpdateContext(model))
+      } yield recommender
 
-      futureActor pipeTo sender()
+      recommenderBox pipeTo sender()
+
   }
 
 }

@@ -37,5 +37,5 @@ object Bootstrap {
   import HttpServer.timeout
   val services: ServiceModule = ServiceModule.forSystem(actorSystem)
 
-  val routes: RoutesModule = new RoutesModule(services)
+  val routes: RoutesModule = new RoutesModule(services)(ActorSystem("route-handler"))
 }

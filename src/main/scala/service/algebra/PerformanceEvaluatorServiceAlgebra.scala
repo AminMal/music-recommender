@@ -3,6 +3,7 @@ package service.algebra
 
 import evaluation.EvaluationMethod
 
+import utils.box.BoxF
 import org.apache.spark.mllib.recommendation.MatrixFactorizationModel
 import org.apache.spark.sql.DataFrame
 
@@ -20,7 +21,7 @@ trait PerformanceEvaluatorServiceAlgebra {
    * @param method method to evaluate with
    * @return resulting dataframe
    */
-  def evaluate(model: MatrixFactorizationModel, method: EvaluationMethod): Future[DataFrame]
+  def evaluate(model: MatrixFactorizationModel, method: EvaluationMethod): BoxF[DataFrame]
 
   /**
    * evaluate a model based on an evaluation method (fire and forget mode)
@@ -34,7 +35,7 @@ trait PerformanceEvaluatorServiceAlgebra {
    * @param model model to evaluate
    * @return all resulting dataframes
    */
-  def evaluateUsingAllMethods(model: MatrixFactorizationModel): Future[Seq[DataFrame]]
+  def evaluateUsingAllMethods(model: MatrixFactorizationModel): BoxF[Seq[DataFrame]]
 
   /**
    * evaluate a model using all existing methods (fire and forget mode)
@@ -47,6 +48,6 @@ trait PerformanceEvaluatorServiceAlgebra {
    * @param method model to evaluate
    * @return
    */
-  def evaluateDefaultModel(method: EvaluationMethod): Future[DataFrame]
+  def evaluateDefaultModel(method: EvaluationMethod): BoxF[DataFrame]
 
 }

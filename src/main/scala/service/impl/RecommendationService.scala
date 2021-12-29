@@ -9,6 +9,7 @@ import controllers.RecommendationController.Messages._
 
 import akka.pattern.ask
 import akka.util.Timeout
+import utils.box.{BoxF, BoxSupport}
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -16,14 +17,16 @@ class RecommendationService(recommendationManager: ActorRef)
                            (
                              implicit ec: ExecutionContext,
                              timeout: Timeout
-                           ) extends RecommendationServiceAlgebra {
+                           ) extends RecommendationServiceAlgebra with BoxSupport {
 
-  override def getRecommendations(userId: Int, count: Int): Future[RecommendationResult] = {
-    val futureRecommender = (recommendationManager ? NewRecommenderActor).mapTo[ActorRef]
+  override def getRecommendations(userId: Int, count: Int): BoxF[RecommendationResult] = {
+    val recommenderBoxF: BoxF[ActorRef] = recommendationManager ??[ActorRef] NewRecommenderActor
+
     for {
-      recommender <- futureRecommender
-      recommendations <- (recommender ? GetRecommendations(userId, count)).mapTo[RecommendationResult]
+      recommender <- recommenderBoxF
+      recommendations <- (recommender ??[RecommendationResult] GetRecommendations(userId, count))
     } yield recommendations
+
   }
 
 }

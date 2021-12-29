@@ -5,9 +5,11 @@ import evaluation._
 import service.algebra.PerformanceEvaluatorServiceAlgebra
 import utils.{ApplicationJsonSupport, DataFrames}
 
-import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
+import utils.box.BoxSupport
+
+import scala.concurrent.ExecutionContext
 
 
 /**
@@ -16,7 +18,7 @@ import akka.http.scaladsl.server.Route
  */
 class PerformanceEvaluatorRouteHandler(
                                         performanceEvaluatorService: PerformanceEvaluatorServiceAlgebra
-                                      ) {
+                                      )(implicit ec: ExecutionContext) extends BoxSupport {
 
   import utils.Matchers._
 
@@ -49,11 +51,16 @@ class PerformanceEvaluatorRouteHandler(
           }
           val result = performanceEvaluatorService.evaluateDefaultModel(method)
 
-          onSuccess(result) { df =>
-            complete(StatusCodes.OK, spark.createDataFrame(
-              spark.sparkContext.parallelize(df.take(take)),
-              schema = df.schema
-            ).toDF(df.columns: _*))
+          onSuccess(result.toScommenderResponse) { scommenderResponseDF =>
+            complete(
+              scommenderResponseDF.status,
+              scommenderResponseDF.map { dataframe =>
+                spark.createDataFrame(
+                  spark.sparkContext.parallelize(dataframe.take(take)),
+                  schema = dataframe.schema
+                ).toDF(dataframe.columns: _*)
+              }
+            )
           }
 
         }

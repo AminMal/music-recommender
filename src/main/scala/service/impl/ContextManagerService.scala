@@ -6,53 +6,43 @@ import controllers.ContextManagerActor.Responses._
 import models.{SongDTO, User}
 import service.algebra.ContextManagerServiceAlgebra
 
+import akka.Done
 import akka.actor.ActorRef
 import akka.pattern.ask
 import akka.util.Timeout
+import utils.box.{BoxF, BoxSupport}
 import org.apache.spark.mllib.recommendation.MatrixFactorizationModel
 
 import java.util.concurrent.TimeUnit
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 
 class ContextManagerService(contextManagerActor: ActorRef)(
-                           implicit timeout: Timeout
-) extends ContextManagerServiceAlgebra {
+                           implicit timeout: Timeout,
+                           ec: ExecutionContext
+) extends ContextManagerServiceAlgebra with BoxSupport {
 
   override def updateModel(): Unit = {
     contextManagerActor ! UpdateModel
   }
 
-  override def getLatestModel: Future[Option[MatrixFactorizationModel]] = {
-    (contextManagerActor ? GetLatestModel).mapTo[Option[MatrixFactorizationModel]]
+  override def getLatestModel: BoxF[Option[MatrixFactorizationModel]] = {
+    (contextManagerActor ??[Option[MatrixFactorizationModel]] GetLatestModel)
   }
 
-  override def addUserRating(userId: Long, songId: Long, rating: Double): Future[CMOperationResult] = {
-    (
-      contextManagerActor ? AddUserRating(
-        userId = userId,
-        songId = songId,
-        rating = rating
-      )
-    ).mapTo[CMOperationResult]
+  override def addUserRating(userId: Long, songId: Long, rating: Double): BoxF[Done] = {
+    val request = AddUserRating(userId, songId, rating)
+    (contextManagerActor ??[CMOperationResult] request).map(_ => Done)
   }
 
-  override def addUserRating(request: AddUserRating): Future[CMOperationResult] = {
-    (
-      contextManagerActor ? request
-    ).mapTo[CMOperationResult]
+  override def addUserRating(request: AddUserRating): BoxF[Done] = {
+    (contextManagerActor ??[CMOperationResult] request).map(_ => Done)
   }
 
-  override def addUser(user: User): Future[CMOperationResult] = {
-    (
-      contextManagerActor ? AddUser(user)
-    )
-      .mapTo[CMOperationResult]
+  override def addUser(user: User): BoxF[Done] = {
+    (contextManagerActor ??[CMOperationResult] AddUser(user)).map(_ => Done)
   }
 
-  override def addSong(song: SongDTO): Future[CMOperationResult] = {
-    (
-      contextManagerActor ? AddSong(song)
-    )
-      .mapTo[CMOperationResult]
+  override def addSong(song: SongDTO): BoxF[Done] = {
+    (contextManagerActor ??[CMOperationResult] AddSong(song)).map(_ => Done)
   }
 }

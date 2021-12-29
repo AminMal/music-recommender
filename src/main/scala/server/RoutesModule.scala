@@ -4,6 +4,7 @@ package server
 import server.routes._
 import service.ServiceModule
 
+import akka.actor.ActorSystem
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 
@@ -12,11 +13,13 @@ import akka.http.scaladsl.server.Route
  * Given service module, this class can handle http requests with fault tolerance
  * @param services an instance of service module
  */
-class RoutesModule(services: ServiceModule) {
+class RoutesModule(services: ServiceModule)(implicit routeHandlerSystem: ActorSystem) {
+
+  import routeHandlerSystem.dispatcher
 
   val applicationRouteHandler = new ApplicationStatusRouteHandler(
     services.applicationStatusService
-  )(scala.concurrent.ExecutionContext.Implicits.global)
+  )
 
   val contextRouteHandler = new ApplicationContextRouteHandler(
     services.contextManagerService

@@ -6,7 +6,8 @@ import models.{RecommendationResult, SongDTO}
 import utils.{ResultParser, ResultParserImpl}
 import controllers.RecommendationController.defaultTrendingSongs
 
-import ir.ac.usc.exception.EntityNotFoundException
+import exception.EntityNotFoundException
+import utils.box.BoxSupport
 import org.apache.spark.mllib.recommendation.MatrixFactorizationModel
 
 import java.time.temporal.ChronoUnit
@@ -18,7 +19,7 @@ import java.time.temporal.ChronoUnit
  * the job is done.
  * @param resultParser an implementation of result parser to fetch user and song data from DataFrames
  */
-class RecommendationController(resultParser: ResultParser) extends Actor with ActorLogging {
+class RecommendationController(resultParser: ResultParser) extends Actor with ActorLogging with BoxSupport {
 
   import RecommendationController.Messages._
   import utils.Common.timeTrack
@@ -35,38 +36,38 @@ class RecommendationController(resultParser: ResultParser) extends Actor with Ac
       log.info(s"update factorization model in recommender actor")
 
     case GetRecommendations(userId, count) =>
-      sender() ! new RecommendationResult(
+      sender() ! toBox(new RecommendationResult(
         userId = userId,
         songs = defaultTrendingSongs.take(count)
-      )
+      ))
       self ! PoisonPill
   }
 
   def receiveWithModel(model: MatrixFactorizationModel): Receive = {
     case GetRecommendations(userId, count) =>
-      val user = timeTrack {
-        resultParser.getUserInfo(userId)
-      } (operationName = Some("Get user info"), ChronoUnit.MILLIS)
-        .getOrElse(throw EntityNotFoundException(entity = "user", id = Some(userId.toString)))
 
-      val recommendationResult = {
-        log.info(s"Found user: $user")
+      val recommendationResult = for {
+        user <- toBox {
+          timeTrack {
+            resultParser.getUserInfo(userId)
+              .getOrElse(throw EntityNotFoundException(entity = "user", id = Some(userId.toString)))
+          } (operationName = Some("Get user info"), ChronoUnit.MILLIS)
+        }
+        _ = log.info(s"Found user: $user")
 
-        val recommendations = timeTrack {
-          model.recommendProducts(user.userId, count)
-        }(operationName = Some("Getting recommendations from model"), ChronoUnit.MILLIS)
+        recommendations <- toBox {
+          timeTrack {
+          model.recommendProducts(userId, count)
+          }(operationName = Some("Getting recommendations from model"), ChronoUnit.MILLIS)
+        }
+        _ = log.info(s"Got ratings: ${recommendations.toSeq}")
 
-        log.info(s"Got ratings: ${recommendations.toSeq}")
-
-        val songs = timeTrack {
-          resultParser.getSongDTOs(recommendations)
-        }(operationName = Some("Getting song info from recommendation result"), ChronoUnit.MILLIS)
-
-        new RecommendationResult(
-          userId = userId,
-          songs = songs
-        )
-      }
+        songs <- toBox {
+          timeTrack {
+            resultParser.getSongDTOs(recommendations)
+          }(operationName = Some("Getting song info from recommendation result"), ChronoUnit.MILLIS)
+        }
+      } yield new RecommendationResult(userId = userId, songs = songs.take(count))
 
       sender() ! recommendationResult
       self ! PoisonPill

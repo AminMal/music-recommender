@@ -2,8 +2,7 @@ package ir.ac.usc
 package server.routes
 
 import controllers.ContextManagerActor.Messages.AddUserRating
-import controllers.ContextManagerActor.Responses.{CMOperationResult, OperationFailure, SuccessfulOperation}
-import models.responses.{ErrorBody, FailureResponse, ResponseMessage, SuccessResponse}
+import models.responses.{FailureResponse, ResponseMessage, ScommenderResponse, SuccessResponse}
 import models.{SongDTO, User}
 import service.algebra.ContextManagerServiceAlgebra
 
@@ -12,28 +11,27 @@ import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import utils.ApplicationJsonSupport
 
+import akka.Done
+import utils.box.BoxSupport
+import scala.concurrent.ExecutionContext
+
 
 /**
  * This class handles http requests for context manager actor
  * @param contextManagerService context manager service
  */
-class ApplicationContextRouteHandler(contextManagerService: ContextManagerServiceAlgebra) {
+class ApplicationContextRouteHandler(
+                                      contextManagerService: ContextManagerServiceAlgebra
+                                    )(implicit ec: ExecutionContext) extends BoxSupport with ApplicationJsonSupport {
 
-  import ApplicationContextRouteHandler._
-
-  private def completeWriteResult(result: CMOperationResult): Route = result match {
-    case SuccessfulOperation =>
+  private def completeScommenderResult(result: ScommenderResponse[Done]): Route = result match {
+    case failed@FailureResponse(_, _) =>
+      complete(failed.status, failed)
+    case success@SuccessResponse(_, _) =>
       complete(
-        status = StatusCodes.OK,
+        status = success.status,
         SuccessResponse.forMessage(
           ResponseMessage.ObjectWriteSuccessful
-        )
-      )
-    case OperationFailure(_) =>
-      complete(
-        status = StatusCodes.InternalServerError,
-        FailureResponse(
-          error = ErrorBody.InternalServerError
         )
       )
   }
@@ -43,7 +41,7 @@ class ApplicationContextRouteHandler(contextManagerService: ContextManagerServic
       entity(as[AddUserRating]) { ratingRequest =>
 
         val managerResponse = contextManagerService.addUserRating(ratingRequest)
-        onSuccess(managerResponse) (completeWriteResult)
+        onSuccess(managerResponse.toScommenderResponse) (completeScommenderResult)
 
       }
     }
@@ -52,7 +50,7 @@ class ApplicationContextRouteHandler(contextManagerService: ContextManagerServic
       entity(as[User]) { user =>
         val managerResponse = contextManagerService.addUser(user)
 
-        onSuccess(managerResponse) (completeWriteResult)
+        onSuccess(managerResponse.toScommenderResponse) (completeScommenderResult)
       }
     }
   } ~ path("song") {
@@ -60,7 +58,7 @@ class ApplicationContextRouteHandler(contextManagerService: ContextManagerServic
       entity(as[SongDTO]) { song =>
         val managerResponse = contextManagerService.addSong(song)
 
-        onSuccess(managerResponse) (completeWriteResult)
+        onSuccess(managerResponse.toScommenderResponse) (completeScommenderResult)
       }
     }
   } ~ path("force-update") {
@@ -74,5 +72,3 @@ class ApplicationContextRouteHandler(contextManagerService: ContextManagerServic
   }
 
 }
-
-object ApplicationContextRouteHandler extends ApplicationJsonSupport

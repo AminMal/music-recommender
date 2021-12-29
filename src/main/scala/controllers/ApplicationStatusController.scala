@@ -3,7 +3,7 @@ package controllers
 
 import akka.actor.{Actor, Props}
 import akka.pattern.pipe
-import ir.ac.usc.utils.box.BoxSupport
+import utils.box.BoxSupport
 
 import java.time.LocalDateTime
 
@@ -22,7 +22,7 @@ class ApplicationStatusController extends Actor with BoxSupport {
 
   def initialReceive: Receive = {
     case HealthCheck =>
-      val modelBoxed = toBoxF(services.contextManagerService.getLatestModel)
+      val modelBoxed = services.contextManagerService.getLatestModel
 
       modelBoxed.map { modelOpt =>
         HealthCheckResponse(matrixModelStatus = modelOpt.isDefined)

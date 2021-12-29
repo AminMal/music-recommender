@@ -6,10 +6,8 @@ import service.algebra._
 import service.impl._
 
 import akka.actor.ActorSystem
-import controllers.ApplicationStatusController.Responses.HealthCheckResponse
 
 import akka.util.Timeout
-import scala.concurrent.{ExecutionContext, Future}
 
 
 /**
@@ -17,7 +15,7 @@ import scala.concurrent.{ExecutionContext, Future}
  */
 sealed class ServiceModule(val system: ActorSystem)(implicit timeout: Timeout) {
 
-  import scala.concurrent.ExecutionContext.Implicits.global
+  import system.dispatcher
 
   lazy val applicationStatusService: ApplicationStatusServiceAlgebra =
     new ApplicationStatusService(
