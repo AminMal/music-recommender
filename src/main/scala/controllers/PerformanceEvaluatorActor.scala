@@ -1,4 +1,4 @@
-package ir.ac.usc
+package scommender
 package controllers
 
 import evaluation.EvaluationMode.EvaluationMode
@@ -67,6 +67,13 @@ class PerformanceEvaluatorActor extends Actor with ActorLogging with BoxSupport 
 
 object PerformanceEvaluatorActor {
   /**
+   * Generates performance evaluator actor Props in order to create new reference of this actor.
+   *
+   * @return props of this actor
+   */
+  def props: Props = Props[PerformanceEvaluatorActor]
+
+  /**
    * Messages that this actor accepts
    */
   object Messages {
@@ -81,11 +88,4 @@ object PerformanceEvaluatorActor {
                                         mode: EvaluationMode = EvaluationMode.FireAndForget
                                       )
   }
-
-  /**
-   * Generates performance evaluator actor Props in order to create new reference of this actor.
-   *
-   * @return props of this actor
-   */
-  def props: Props = Props[PerformanceEvaluatorActor]
 }

@@ -1,4 +1,4 @@
-package ir.ac.usc
+package scommender
 package utils
 
 import org.apache.spark.sql.types.{DataTypes, StructField, StructType}

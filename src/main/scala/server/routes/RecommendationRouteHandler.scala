@@ -1,4 +1,4 @@
-package ir.ac.usc
+package scommender
 package server.routes
 
 import service.algebra.RecommendationServiceAlgebra

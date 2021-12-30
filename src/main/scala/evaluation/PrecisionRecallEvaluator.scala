@@ -1,4 +1,4 @@
-package ir.ac.usc
+package scommender
 package evaluation
 
 import evaluation.MetricsEnum.MetricsEnum

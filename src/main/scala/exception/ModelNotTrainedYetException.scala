@@ -1,4 +1,4 @@
-package ir.ac.usc
+package scommender
 package exception
 
 import models.responses.{ErrorBody, FailureResponse}

@@ -1,4 +1,4 @@
-package ir.ac.usc
+package scommender
 package controllers
 
 import conf.{ALSConfig, ALSDefaultConf}
@@ -12,6 +12,7 @@ import akka.actor.{Actor, ActorLogging, Props}
 class ConfigManagerActor extends Actor with ActorLogging {
 
   import Bootstrap.services
+
   import ConfigManagerActor.Messages._
   import ConfigManagerActor.Response._
 

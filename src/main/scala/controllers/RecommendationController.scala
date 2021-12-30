@@ -1,4 +1,4 @@
-package ir.ac.usc
+package scommender
 package controllers
 
 import controllers.RecommendationController.defaultTrendingSongs
@@ -26,12 +26,12 @@ class RecommendationController(resultParser: ResultParser) extends Actor with Ac
 
   import RecommendationController.Messages._
 
-  override def receive: Receive = initialReceive
-
   val defaultResult: Int => RecommendationResult = userId =>
     new RecommendationResult(
       userId = userId, songs = defaultTrendingSongs
     )
+
+  override def receive: Receive = initialReceive
 
   def initialReceive: Receive = {
     case UpdateContext(model) =>
@@ -51,24 +51,24 @@ class RecommendationController(resultParser: ResultParser) extends Actor with Ac
 
       val recommendationResult = for {
         user <- toBox {
-          timeTrack {
+          timeTrack(operationName = Some("Get user info"), ChronoUnit.MILLIS) {
             resultParser.getUserInfo(userId)
               .getOrElse(throw EntityNotFoundException(entity = "user", id = Some(userId.toString)))
-          }(operationName = Some("Get user info"), ChronoUnit.MILLIS)
+          }
         }
         _ = log.info(s"Found user: $user")
 
         recommendations <- toBox {
-          timeTrack {
+          timeTrack(operationName = Some("Getting recommendations from model"), ChronoUnit.MILLIS) {
             model.recommendProducts(userId, count)
-          }(operationName = Some("Getting recommendations from model"), ChronoUnit.MILLIS)
+          }
         }
         _ = log.info(s"Got ratings: ${recommendations.toSeq}")
 
         songs <- toBox {
-          timeTrack {
+          timeTrack(operationName = Some("Getting song info from recommendation result"), ChronoUnit.MILLIS) {
             resultParser.getSongDTOs(recommendations)
-          }(operationName = Some("Getting song info from recommendation result"), ChronoUnit.MILLIS)
+          }
         }
       } yield new RecommendationResult(userId = userId, songs = songs.take(count))
 
@@ -79,6 +79,15 @@ class RecommendationController(resultParser: ResultParser) extends Actor with Ac
 }
 
 object RecommendationController {
+
+  val defaultTrendingSongs: Seq[SongDTO] = Seq(
+    SongDTO.mock(id = 125323L, name = "Coloratura", artistName = "Coldplay"),
+    SongDTO.mock(id = 321534L, name = "Do I wanna know?", artistName = "Arctic monkeys"),
+    SongDTO.mock(id = 413416L, name = "Love and hate", artistName = "Michael Kiwanuka"),
+    SongDTO.mock(id = 782351L, name = "Riders on the storm", artistName = "The doors"),
+    SongDTO.mock(id = 213632L, name = "Lucky town", artistName = "Bruce Springsteen"),
+    SongDTO.mock(id = 783294L, name = "Paragon", artistName = "Soen")
+  )
 
   /**
    * Generates recommendation controller actor Props in order to create new reference of this actor.
@@ -95,13 +104,4 @@ object RecommendationController {
 
     case class GetRecommendations(userId: Int, count: Int = 6)
   }
-
-  val defaultTrendingSongs: Seq[SongDTO] = Seq(
-    SongDTO.mock(id = 125323L, name = "Coloratura", artistName = "Coldplay"),
-    SongDTO.mock(id = 321534L, name = "Do I wanna know?", artistName = "Arctic monkeys"),
-    SongDTO.mock(id = 413416L, name = "Love and hate", artistName = "Michael Kiwanuka"),
-    SongDTO.mock(id = 782351L, name = "Riders on the storm", artistName = "The doors"),
-    SongDTO.mock(id = 213632L, name = "Lucky town", artistName = "Bruce Springsteen"),
-    SongDTO.mock(id = 783294L, name = "Paragon", artistName = "Soen")
-  )
 }

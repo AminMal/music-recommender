@@ -1,4 +1,4 @@
-package ir.ac.usc
+package scommender
 package controllers
 
 import Bootstrap.services.{performanceEvaluatorService => performanceEvaluator}
@@ -6,14 +6,13 @@ import Bootstrap.spark
 import conf.{ALSDefaultConf, RecommenderDataPaths}
 import models.{SongDTO, User}
 import utils.Common.timeTrack
-import utils.box.{BoxSupport, Failed}
+import utils.box.BoxSupport
 
 import akka.actor.{Actor, ActorContext, ActorLogging, ActorRef, PoisonPill, Props}
 import org.apache.spark.mllib.recommendation.MatrixFactorizationModel
 
 import java.time.temporal.ChronoUnit
 import scala.concurrent.duration.Duration
-import scala.util.control.NonFatal
 
 
 /**
@@ -41,35 +40,20 @@ class ContextManagerActor extends Actor with ActorLogging with BoxSupport {
     case UpdateModel =>
       log.info(s"updating model started on context manager actor: ${self.path}")
       val modelBox = toBox {
-        timeTrack {
+        timeTrack(operationName = Some("loading latest model"), ChronoUnit.MILLIS) {
           MatrixFactorizationModel
             .load(spark.sparkContext, RecommenderDataPaths.latestModelPath)
-        }(operationName = Some("loading latest model"), ChronoUnit.MILLIS)
+        }
       }
 
       modelBox.peek { model =>
         context.become(receiveWithLatestModel(model))
         performanceEvaluator.evaluateUsingAllMethodsDispatched(model)
       }
-        .recoverWith { exc =>
+        .ifFailed { _ =>
           log.warning("could not find latest model")
           newSlave ! UpdateModel
-          Failed[MatrixFactorizationModel](exc)
         }
-
-      try {
-        val model = timeTrack {
-          MatrixFactorizationModel
-            .load(spark.sparkContext, RecommenderDataPaths.latestModelPath)
-        }(operationName = Some("loading latest model"), ChronoUnit.MILLIS)
-
-        context.become(receiveWithLatestModel(model))
-        performanceEvaluator.evaluateUsingAllMethodsDispatched(model)
-      } catch {
-        case NonFatal(_) =>
-          log.warning("could not find latest model")
-          newSlave ! UpdateModel
-      }
 
     case GetLatestModel =>
       sender() ! toBox(Option.empty[MatrixFactorizationModel])
@@ -170,19 +154,19 @@ object ContextManagerActor {
                               rating: Double
                             ) extends AddDataRequest
 
+    case class AddUser(user: User) extends AddDataRequest
+
+    case class AddSong(song: SongDTO) extends AddDataRequest
+
+    case class Save(model: MatrixFactorizationModel)
+
     object AddUserRating {
       final val dfColNames = Seq("user_id", "song_id", "target")
     }
 
     case object UpdateModel
 
-    case class AddUser(user: User) extends AddDataRequest
-
-    case class AddSong(song: SongDTO) extends AddDataRequest
-
     case object GetLatestModel
-
-    case class Save(model: MatrixFactorizationModel)
   }
 
   /**
@@ -193,10 +177,10 @@ object ContextManagerActor {
 
     case class SuccessfulUpdateOnModel(model: MatrixFactorizationModel)
 
-    case object SuccessfulOperation extends CMOperationResult
-
     case class OperationFailure(throwable: Throwable) extends CMOperationResult
 
     case class OperationBindResult(result: CMOperationResult, replyTo: ActorRef)
+
+    case object SuccessfulOperation extends CMOperationResult
   }
 }

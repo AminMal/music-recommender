@@ -1,4 +1,4 @@
-package ir.ac.usc
+package scommender
 package controllers
 
 import Bootstrap.services.{configurationManagementService => configService}
@@ -28,6 +28,7 @@ private[controllers] class ContextManagerSlaveActor extends Actor with ActorLogg
 
   import Bootstrap.spark
   import utils.Common.timeTrack
+
   import ContextManagerActor.Responses._
   import ContextManagerSlaveActor._
   import spark.implicits._
@@ -74,23 +75,23 @@ private[controllers] class ContextManagerSlaveActor extends Actor with ActorLogg
         ratings <- trainRddF
       } yield {
         log.info(s"updating model for config: $config")
-        timeTrack {
+        timeTrack(operationName = Some("creating als model")) {
           ALSBuilder.forConfig(config).run(ratings)
-        }(operationName = Some("creating als model"))
+        }
       }
 
       modelFuture.map(SuccessfulUpdateOnModel.apply)
         .pipeTo(sender)
 
     case Save(model) =>
-      timeTrack {
+      timeTrack(operationName = Some("saving latest recommender"), ChronoUnit.MILLIS) {
         Try {
           new File(Paths.latestModelPath).delete()
           log.info("deleted latest model")
           model.save(spark.sparkContext, Paths.latestModelPath)
           log.info("inserted latest model")
         }
-      }(operationName = Some("saving latest recommender"), ChronoUnit.MILLIS)
+      }
 
       sender() ! SuccessfulOperation
 

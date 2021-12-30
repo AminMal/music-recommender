@@ -1,4 +1,4 @@
-package ir.ac.usc
+package scommender
 package server
 
 import server.routes._

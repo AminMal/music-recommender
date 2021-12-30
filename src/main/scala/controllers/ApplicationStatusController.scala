@@ -1,4 +1,4 @@
-package ir.ac.usc
+package scommender
 package controllers
 
 import utils.box.BoxSupport
@@ -15,6 +15,7 @@ import java.time.LocalDateTime
 class ApplicationStatusController extends Actor with BoxSupport {
 
   import Bootstrap.services
+
   import ApplicationStatusController.Messages._
   import ApplicationStatusController.Responses._
   import context.dispatcher

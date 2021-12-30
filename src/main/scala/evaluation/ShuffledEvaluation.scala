@@ -1,4 +1,4 @@
-package ir.ac.usc
+package scommender
 package evaluation
 
 import Bootstrap.spark
@@ -23,11 +23,6 @@ class ShuffledEvaluation(
 
   override val metric: MetricsEnum = MetricsEnum.Shuffled
 
-  private def predictRatings(model: MatrixFactorizationModel): RDD[Rating] = {
-    val usersProduct = testData.collect().map(row => row.getAs[Long]("user_id").toInt -> row.getAs[Long]("song_id").toInt)
-    model.predict(spark.sparkContext.parallelize(usersProduct))
-  }
-
   def evaluate(model: MatrixFactorizationModel): DataFrame = {
     val predictions = predictRatings(model)
     val predictionsDF = spark.createDataFrame(predictions)
@@ -43,5 +38,10 @@ class ShuffledEvaluation(
         predictionsDF.col("rating"),
         ratings.col("target")
       )
+  }
+
+  private def predictRatings(model: MatrixFactorizationModel): RDD[Rating] = {
+    val usersProduct = testData.collect().map(row => row.getAs[Long]("user_id").toInt -> row.getAs[Long]("song_id").toInt)
+    model.predict(spark.sparkContext.parallelize(usersProduct))
   }
 }

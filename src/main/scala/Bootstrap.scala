@@ -1,4 +1,4 @@
-package ir.ac.usc
+package scommender
 
 import server.RoutesModule
 import service.ServiceModule
@@ -10,16 +10,14 @@ import org.apache.log4j.{Level, Logger}
 import org.apache.spark.sql.SparkSession
 
 object Bootstrap {
-
-  val appConfig: Config = ConfigFactory.load()
-
-  Logger.getLogger("org").setLevel(Level.ERROR)
-
   final val spark = SparkSession
     .builder()
     .appName("scommender")
-    .config("spark.master", "local[8]") // todo, this needs to be removed in production
+    .config("spark.master", "local[4]") // todo, this needs to be removed in production
     .getOrCreate()
+
+  Logger.getLogger("org").setLevel(Level.ERROR)
+  val appConfig: Config = ConfigFactory.load()
 
   import utils.SparkFunctions._
 
@@ -36,7 +34,6 @@ object Bootstrap {
   implicit val materializer: Materializer = Materializer.matFromSystem
 
   import HttpServer.timeout
-
   val services: ServiceModule = ServiceModule.forSystem(actorSystem)
 
   val routes: RoutesModule = new RoutesModule(services)(ActorSystem("route-handler"))

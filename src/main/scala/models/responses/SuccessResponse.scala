@@ -1,4 +1,4 @@
-package ir.ac.usc
+package scommender
 package models.responses
 
 import akka.http.scaladsl.model.{StatusCode, StatusCodes}

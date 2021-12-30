@@ -1,4 +1,4 @@
-package ir.ac.usc
+package scommender
 package controllers
 
 import akka.actor.{ActorSystem, Props}

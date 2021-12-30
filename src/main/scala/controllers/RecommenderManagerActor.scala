@@ -1,4 +1,4 @@
-package ir.ac.usc
+package scommender
 package controllers
 
 import controllers.RecommendationController.Messages.UpdateContext
@@ -17,8 +17,6 @@ class RecommenderManagerActor extends Actor with BoxSupport {
 
   import context.dispatcher
 
-  def newRecommender(): ActorRef = context.actorOf(RecommendationController.props)
-
   def receive: Receive = {
     case NewRecommenderActor =>
 
@@ -31,6 +29,8 @@ class RecommenderManagerActor extends Actor with BoxSupport {
       recommenderBox pipeTo sender()
 
   }
+
+  def newRecommender(): ActorRef = context.actorOf(RecommendationController.props)
 
 }
 

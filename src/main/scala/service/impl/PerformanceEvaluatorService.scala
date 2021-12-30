@@ -1,4 +1,4 @@
-package ir.ac.usc
+package scommender
 package service.impl
 
 import controllers.PerformanceEvaluatorActor.Messages._
@@ -22,15 +22,6 @@ class PerformanceEvaluatorService(
                                    executionContext: ExecutionContext
                                  ) extends PerformanceEvaluatorServiceAlgebra with BoxSupport {
 
-  override def evaluate(model: MatrixFactorizationModel, method: EvaluationMethod): BoxF[DataFrame] = {
-    val evaluationRequest = EvaluationRequest(
-      mode = EvaluationMode.Wait,
-      model = model,
-      method = method
-    )
-    performanceEvaluator() ??[DataFrame] evaluationRequest
-  }
-
   override def evaluateDispatched(model: MatrixFactorizationModel, method: EvaluationMethod): Unit = {
     performanceEvaluator() ! EvaluationRequest(
       mode = EvaluationMode.FireAndForget,
@@ -52,5 +43,14 @@ class PerformanceEvaluatorService(
       val model = modelOpt.getOrElse(throw ModelNotTrainedYetException)
       evaluate(model, method)
     }
+  }
+
+  override def evaluate(model: MatrixFactorizationModel, method: EvaluationMethod): BoxF[DataFrame] = {
+    val evaluationRequest = EvaluationRequest(
+      mode = EvaluationMode.Wait,
+      model = model,
+      method = method
+    )
+    performanceEvaluator() ??[DataFrame] evaluationRequest
   }
 }

@@ -1,4 +1,4 @@
-package ir.ac.usc
+package scommender
 package server.routes
 
 import controllers.ContextManagerActor.Messages.AddUserRating
@@ -24,18 +24,6 @@ import scala.concurrent.ExecutionContext
 class ApplicationContextRouteHandler(
                                       contextManagerService: ContextManagerServiceAlgebra
                                     )(implicit ec: ExecutionContext) extends BoxSupport with ApplicationJsonSupport {
-
-  private def completeScommenderResult(result: ScommenderResponse[Done]): Route = result match {
-    case failed@FailureResponse(_, _) =>
-      complete(failed.status, failed)
-    case success@SuccessResponse(_, _) =>
-      complete(
-        status = success.status,
-        SuccessResponse.forMessage(
-          ResponseMessage.ObjectWriteSuccessful
-        )
-      )
-  }
 
   val routes: Route = path("rating") {
     post {
@@ -70,6 +58,18 @@ class ApplicationContextRouteHandler(
         SuccessResponse.forMessage("update request sent successfully")
       )
     }
+  }
+
+  private def completeScommenderResult(result: ScommenderResponse[Done]): Route = result match {
+    case failed@FailureResponse(_, _) =>
+      complete(failed.status, failed)
+    case success@SuccessResponse(_, _) =>
+      complete(
+        status = success.status,
+        SuccessResponse.forMessage(
+          ResponseMessage.ObjectWriteSuccessful
+        )
+      )
   }
 
 }

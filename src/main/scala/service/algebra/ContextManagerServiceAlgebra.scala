@@ -1,4 +1,4 @@
-package ir.ac.usc
+package scommender
 package service.algebra
 
 import controllers.ContextManagerActor.Messages.AddUserRating

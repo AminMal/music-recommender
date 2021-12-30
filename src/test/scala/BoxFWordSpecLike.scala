@@ -1,4 +1,4 @@
-package ir.ac.usc
+package scommender
 
 import utils.box.{BoxF, Failed, Successful}
 import org.scalactic.source
