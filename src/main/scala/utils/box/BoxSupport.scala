@@ -1,15 +1,18 @@
 package ir.ac.usc
 package utils.box
 
+import exception.ScommenderException
+import models.responses.{ScommenderResponse, SuccessResponse}
+
 import akka.actor.ActorRef
+import akka.pattern.ask
 import akka.util.Timeout
 
 import scala.concurrent.{ExecutionContext, Future}
+import scala.language.implicitConversions
 import scala.reflect.ClassTag
 import scala.util.{Failure, Success, Try}
-import akka.pattern.ask
-import exception.ScommenderException
-import models.responses.{ScommenderResponse, SuccessResponse}
+
 
 trait BoxSupport {
 
@@ -38,7 +41,7 @@ trait BoxSupport {
   }
 
   implicit class ActorBoxOps(ref: ActorRef)(implicit ec: ExecutionContext) {
-    def ??[T : ClassTag](msg: Any)(implicit to: Timeout): BoxF[T] = {
+    def ??[T: ClassTag](msg: Any)(implicit to: Timeout): BoxF[T] = {
       toBoxF((ref ? msg).mapTo[Box[T]])
     }
   }
@@ -56,6 +59,7 @@ trait BoxSupport {
   def toBox[T](magnet: BoxMagnet[T]): Box[T] = magnet.invoke()
 
   type EC = ExecutionContext
+
   implicit def futureToBoxMagnet[T](future: => Future[T])(implicit ec: EC): BoxFMagnet[T] = () => {
     new BoxF[T](Box(future))
   }

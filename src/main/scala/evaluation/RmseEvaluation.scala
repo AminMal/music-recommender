@@ -10,12 +10,13 @@ import org.apache.spark.sql.functions._
 
 /**
  * Isntances of this class can calculate root mean squared error of matrix factorization models.
- * @param ratings original ratings
+ *
+ * @param ratings  original ratings
  * @param testData data to test model with
  */
 class RmseEvaluation(
-                    ratings: DataFrame,
-                    testData: DataFrame
+                      ratings: DataFrame,
+                      testData: DataFrame
                     ) extends ShuffledEvaluation(ratings, testData) {
   override val metric: MetricsEnum = MetricsEnum.RMSE
 

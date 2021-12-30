@@ -6,13 +6,14 @@ import Bootstrap.spark
 import conf.{ALSDefaultConf, RecommenderDataPaths}
 import models.{SongDTO, User}
 import utils.Common.timeTrack
+import utils.box.{BoxSupport, Failed}
 
 import akka.actor.{Actor, ActorContext, ActorLogging, ActorRef, PoisonPill, Props}
-import utils.box.BoxSupport
 import org.apache.spark.mllib.recommendation.MatrixFactorizationModel
 
 import java.time.temporal.ChronoUnit
 import scala.concurrent.duration.Duration
+import scala.util.control.NonFatal
 
 
 /**
@@ -39,16 +40,33 @@ class ContextManagerActor extends Actor with ActorLogging with BoxSupport {
     * */
     case UpdateModel =>
       log.info(s"updating model started on context manager actor: ${self.path}")
+      val modelBox = toBox {
+        timeTrack {
+          MatrixFactorizationModel
+            .load(spark.sparkContext, RecommenderDataPaths.latestModelPath)
+        }(operationName = Some("loading latest model"), ChronoUnit.MILLIS)
+      }
+
+      modelBox.peek { model =>
+        context.become(receiveWithLatestModel(model))
+        performanceEvaluator.evaluateUsingAllMethodsDispatched(model)
+      }
+        .recoverWith { exc =>
+          log.warning("could not find latest model")
+          newSlave ! UpdateModel
+          Failed[MatrixFactorizationModel](exc)
+        }
+
       try {
         val model = timeTrack {
           MatrixFactorizationModel
             .load(spark.sparkContext, RecommenderDataPaths.latestModelPath)
-        } (operationName = Some("loading latest model"), ChronoUnit.MILLIS)
+        }(operationName = Some("loading latest model"), ChronoUnit.MILLIS)
 
         context.become(receiveWithLatestModel(model))
-//        performanceEvaluator.evaluateUsingAllMethodsDispatched(model)
+        performanceEvaluator.evaluateUsingAllMethodsDispatched(model)
       } catch {
-        case _: Exception =>
+        case NonFatal(_) =>
           log.warning("could not find latest model")
           newSlave ! UpdateModel
       }
@@ -60,11 +78,11 @@ class ContextManagerActor extends Actor with ActorLogging with BoxSupport {
       context.become(receiveWithLatestModel(model))
       sender() ! PoisonPill
       newSlave ! Save(model)
-//      performanceEvaluator.evaluateUsingAllMethodsDispatched(model)
+      performanceEvaluator.evaluateUsingAllMethodsDispatched(model)
 
-      /*
-      *   Data append messages
-      * */
+    /*
+    *   Data append messages
+    * */
     case request: AddUserRating =>
       newSlave ! AddDataRequestWithSender(request, sender())
 
@@ -74,9 +92,9 @@ class ContextManagerActor extends Actor with ActorLogging with BoxSupport {
     case request: AddSong =>
       newSlave ! AddDataRequestWithSender(request, sender())
 
-      /*
-      *   Slave messages
-      * */
+    /*
+    *   Slave messages
+    * */
     case OperationBindResult(result, replyTo) =>
       replyTo ! toBox(result)
       sender() /* slave */ ! PoisonPill
@@ -101,9 +119,9 @@ class ContextManagerActor extends Actor with ActorLogging with BoxSupport {
       newSlave ! Save(model)
       sender() ! PoisonPill
 
-      /*
-      *    Data append messages
-      * */
+    /*
+    *    Data append messages
+    * */
 
     case request: AddUserRating =>
       newSlave ! AddDataRequestWithSender(request, sender())
@@ -114,9 +132,9 @@ class ContextManagerActor extends Actor with ActorLogging with BoxSupport {
     case request: AddSong =>
       newSlave ! AddDataRequestWithSender(request, sender())
 
-      /*
-      *   Slave messages
-      * */
+    /*
+    *   Slave messages
+    * */
 
     case OperationBindResult(result, replyTo) =>
       replyTo ! toBox(result)
@@ -131,6 +149,7 @@ object ContextManagerActor {
 
   /**
    * Generates context manager actor Props in order to create new reference of this actor.
+   *
    * @return Props of this actor.
    */
   def props: Props = Props(new ContextManagerActor)
@@ -142,12 +161,13 @@ object ContextManagerActor {
    */
   object Messages {
     sealed trait AddDataRequest
+
     case class AddDataRequestWithSender(request: AddDataRequest, replyTo: ActorRef)
 
     case class AddUserRating(
-                            userId: Long,
-                            songId: Long,
-                            rating: Double
+                              userId: Long,
+                              songId: Long,
+                              rating: Double
                             ) extends AddDataRequest
 
     object AddUserRating {
@@ -170,9 +190,13 @@ object ContextManagerActor {
    */
   object Responses {
     sealed trait CMOperationResult // ContextManagerOperationResult
+
     case class SuccessfulUpdateOnModel(model: MatrixFactorizationModel)
+
     case object SuccessfulOperation extends CMOperationResult
+
     case class OperationFailure(throwable: Throwable) extends CMOperationResult
+
     case class OperationBindResult(result: CMOperationResult, replyTo: ActorRef)
   }
 }

@@ -1,5 +1,6 @@
 package ir.ac.usc
 package exception
+
 import models.responses.{ErrorBody, FailureResponse}
 
 import akka.http.scaladsl.model.{StatusCode, StatusCodes}

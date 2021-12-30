@@ -7,7 +7,7 @@ package utils
  */
 object SparkFunctions {
 
-  val getError: (Double, Double) => Double = (a,b) => {
+  val getError: (Double, Double) => Double = (a, b) => {
     val err = a - b
     err * err
   }

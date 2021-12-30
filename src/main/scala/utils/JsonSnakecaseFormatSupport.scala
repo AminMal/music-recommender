@@ -8,6 +8,7 @@ import spray.json.DefaultJsonProtocol
  * This trait provides snakecase json formatting.
  */
 trait JsonSnakecaseFormatSupport extends DefaultJsonProtocol {
+
   import reflect.ClassTag
 
   override protected def extractFieldNames(classTag: ClassTag[_]): Array[String] = {

@@ -5,19 +5,20 @@ import controllers.ContextManagerActor.Messages.AddUserRating
 import models.responses.{FailureResponse, ResponseMessage, ScommenderResponse, SuccessResponse}
 import models.{SongDTO, User}
 import service.algebra.ContextManagerServiceAlgebra
+import utils.ApplicationJsonSupport
+import utils.box.BoxSupport
 
+import akka.Done
 import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
-import utils.ApplicationJsonSupport
 
-import akka.Done
-import utils.box.BoxSupport
 import scala.concurrent.ExecutionContext
 
 
 /**
  * This class handles http requests for context manager actor
+ *
  * @param contextManagerService context manager service
  */
 class ApplicationContextRouteHandler(
@@ -41,7 +42,7 @@ class ApplicationContextRouteHandler(
       entity(as[AddUserRating]) { ratingRequest =>
 
         val managerResponse = contextManagerService.addUserRating(ratingRequest)
-        onSuccess(managerResponse.toScommenderResponse) (completeScommenderResult)
+        onSuccess(managerResponse.toScommenderResponse)(completeScommenderResult)
 
       }
     }
@@ -50,7 +51,7 @@ class ApplicationContextRouteHandler(
       entity(as[User]) { user =>
         val managerResponse = contextManagerService.addUser(user)
 
-        onSuccess(managerResponse.toScommenderResponse) (completeScommenderResult)
+        onSuccess(managerResponse.toScommenderResponse)(completeScommenderResult)
       }
     }
   } ~ path("song") {
@@ -58,7 +59,7 @@ class ApplicationContextRouteHandler(
       entity(as[SongDTO]) { song =>
         val managerResponse = contextManagerService.addSong(song)
 
-        onSuccess(managerResponse.toScommenderResponse) (completeScommenderResult)
+        onSuccess(managerResponse.toScommenderResponse)(completeScommenderResult)
       }
     }
   } ~ path("force-update") {

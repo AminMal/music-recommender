@@ -13,6 +13,7 @@ import akka.http.scaladsl.server.Route
 
 /**
  * This class handles http requests for configuration manager actor
+ *
  * @param configService configuration management service
  */
 class ConfigurationsRouteHandler(configService: ConfigurationManagementServiceAlgebra) {

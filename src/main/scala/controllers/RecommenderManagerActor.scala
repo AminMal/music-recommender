@@ -1,23 +1,21 @@
 package ir.ac.usc
 package controllers
 
-import akka.actor.{Actor, ActorRef, Props}
-import akka.pattern.pipe
 import controllers.RecommendationController.Messages.UpdateContext
-
 import utils.box.BoxSupport
-import org.apache.spark.mllib.recommendation.MatrixFactorizationModel
 
-import scala.concurrent.Future
+import akka.actor.{Actor, ActorRef, Props}
 
 
 /**
  * This actor controls recommendation requests and slave actors.
  */
 class RecommenderManagerActor extends Actor with BoxSupport {
-  import controllers.RecommenderManagerActor.Messages._
-  import context.dispatcher
+
   import Bootstrap.services.contextManagerService
+  import controllers.RecommenderManagerActor.Messages._
+
+  import context.dispatcher
 
   def newRecommender(): ActorRef = context.actorOf(RecommendationController.props)
 
@@ -40,6 +38,7 @@ object RecommenderManagerActor {
 
   /**
    * Generates recommender manager actor Props in order to create new reference of this actor.
+   *
    * @return props for this actor
    */
   def props: Props = Props(new RecommenderManagerActor)

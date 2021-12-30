@@ -6,7 +6,6 @@ import service.algebra._
 import service.impl._
 
 import akka.actor.ActorSystem
-
 import akka.util.Timeout
 
 
@@ -49,8 +48,9 @@ object ServiceModule {
 
   /**
    * Creates an instance of service module for given actor system
+   *
    * @param actorSystem service actor system
-   * @param to timeout for messages
+   * @param to          timeout for messages
    * @return a new instance of service module
    */
   def forSystem(actorSystem: ActorSystem)(implicit to: Timeout): ServiceModule =

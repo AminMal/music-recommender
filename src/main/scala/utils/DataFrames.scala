@@ -21,6 +21,7 @@ object DataFrames {
 
   /**
    * read users dataframe data.
+   *
    * @return users dataframe
    */
   def usersDF: DataFrame = spark.read
@@ -29,6 +30,7 @@ object DataFrames {
 
   /**
    * read songs dataframe data.
+   *
    * @return songs dataframe
    */
   def songsDF: DataFrame = spark.read
@@ -37,6 +39,7 @@ object DataFrames {
 
   /**
    * read ratings dataframe data.
+   *
    * @return ratings dataframe.
    */
   def ratingsDF: DataFrame = spark.read
@@ -45,6 +48,7 @@ object DataFrames {
 
   /**
    * read train dataframe data
+   *
    * @return train dataframe
    */
   def trainingDF: DataFrame = spark.read
@@ -53,6 +57,7 @@ object DataFrames {
 
   /**
    * read test dataframe data
+   *
    * @return test dataframe
    */
   def testDataDF: DataFrame = spark.read
@@ -88,6 +93,7 @@ object DataFrames {
 
   /**
    * reads ratings dataframe streaming.
+   *
    * @param ec execution context
    * @return rdd for ratings wrapped in future.
    */
@@ -96,6 +102,7 @@ object DataFrames {
 
   /**
    * reads train dataframe streaming.
+   *
    * @param ec execution context
    * @return rdd for train data wrapped in future.
    */

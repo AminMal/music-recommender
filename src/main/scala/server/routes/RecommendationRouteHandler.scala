@@ -2,16 +2,17 @@ package ir.ac.usc
 package server.routes
 
 import service.algebra.RecommendationServiceAlgebra
+import utils.ApplicationJsonSupport
+import utils.box.BoxSupport
 
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
-import utils.ApplicationJsonSupport
-import scala.concurrent.ExecutionContext
 
-import utils.box.BoxSupport
+import scala.concurrent.ExecutionContext
 
 /**
  * This class handles http requests for recommendation manager actor
+ *
  * @param recommendationService recommendation service
  */
 class RecommendationRouteHandler(

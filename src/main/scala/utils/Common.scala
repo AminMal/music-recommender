@@ -12,9 +12,10 @@ object Common {
 
   /**
    * evaluate the given code, printing the time it took to evaluate the code
-   * @param code the input code block
+   *
+   * @param code          the input code block
    * @param operationName operation name for better printing
-   * @param timeUnit time unit for operation
+   * @param timeUnit      time unit for operation
    * @tparam V Type of the code expression
    * @return value of running the code
    */

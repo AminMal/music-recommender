@@ -1,13 +1,13 @@
 package ir.ac.usc
 package utils
 
-import utils.DataFrames._
 import models.{SongDTO, User}
+import utils.DataFrames._
 
 import org.apache.spark.mllib.recommendation.Rating
+import org.apache.spark.sql.functions._
 
 import scala.util.Try
-import org.apache.spark.sql.functions._
 
 class ResultParserImpl extends ResultParser {
 

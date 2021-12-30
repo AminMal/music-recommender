@@ -1,13 +1,13 @@
 package ir.ac.usc
 
-import org.apache.spark.sql.SparkSession
-import org.apache.log4j.{Level, Logger}
-import akka.actor.ActorSystem
-import akka.stream.Materializer
 import server.RoutesModule
 import service.ServiceModule
 
+import akka.actor.ActorSystem
+import akka.stream.Materializer
 import com.typesafe.config.{Config, ConfigFactory}
+import org.apache.log4j.{Level, Logger}
+import org.apache.spark.sql.SparkSession
 
 object Bootstrap {
 
@@ -18,10 +18,11 @@ object Bootstrap {
   final val spark = SparkSession
     .builder()
     .appName("scommender")
-    .config("spark.master", "local[8]")  // todo, this needs to be removed in production
+    .config("spark.master", "local[8]") // todo, this needs to be removed in production
     .getOrCreate()
 
   import utils.SparkFunctions._
+
   spark.udf.register("geterr", getError)
   spark.udf.register("getstate", getState)
   spark.udf.register("fMeasure", fMeasure)
@@ -35,6 +36,7 @@ object Bootstrap {
   implicit val materializer: Materializer = Materializer.matFromSystem
 
   import HttpServer.timeout
+
   val services: ServiceModule = ServiceModule.forSystem(actorSystem)
 
   val routes: RoutesModule = new RoutesModule(services)(ActorSystem("route-handler"))

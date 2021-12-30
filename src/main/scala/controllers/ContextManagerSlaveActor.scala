@@ -8,10 +8,10 @@ import controllers.ContextManagerActor.Responses._
 import models.{SongDTO, User}
 import utils.ALSBuilder
 import utils.DataFrames.trainRddF
+import utils.box.BoxSupport
 
 import akka.actor.{Actor, ActorLogging, ActorRef}
 import akka.pattern.pipe
-import utils.box.BoxSupport
 import org.apache.spark.sql.SaveMode
 
 import java.io.File
@@ -25,9 +25,9 @@ import scala.util.{Failure, Success, Try}
  * and gets killed right after the work is done.
  */
 private[controllers] class ContextManagerSlaveActor extends Actor with ActorLogging with BoxSupport {
+
   import Bootstrap.spark
   import utils.Common.timeTrack
-
   import ContextManagerActor.Responses._
   import ContextManagerSlaveActor._
   import spark.implicits._
@@ -44,7 +44,7 @@ private[controllers] class ContextManagerSlaveActor extends Actor with ActorLogg
               .write
               .mode(SaveMode.Append)
               .parquet(path = Paths.ratingsPath)
-          } (parent = sender(), replyTo = replyTo)
+          }(parent = sender(), replyTo = replyTo)
         case req: AddUser =>
           /* user validations should be done on another service */
           val newUserDF = (req.user :: Nil)
@@ -63,7 +63,7 @@ private[controllers] class ContextManagerSlaveActor extends Actor with ActorLogg
             newSongDF.write
               .mode(SaveMode.Append)
               .parquet(path = Paths.songsPath)
-          } (parent = sender(), replyTo = replyTo)
+          }(parent = sender(), replyTo = replyTo)
       }
 
     case UpdateModel =>
@@ -76,21 +76,21 @@ private[controllers] class ContextManagerSlaveActor extends Actor with ActorLogg
         log.info(s"updating model for config: $config")
         timeTrack {
           ALSBuilder.forConfig(config).run(ratings)
-        } (operationName = Some("creating als model"))
+        }(operationName = Some("creating als model"))
       }
 
       modelFuture.map(SuccessfulUpdateOnModel.apply)
         .pipeTo(sender)
 
     case Save(model) =>
-    timeTrack {
-      Try{
-        new File(Paths.latestModelPath).delete()
-        log.info("deleted latest model")
-        model.save(spark.sparkContext, Paths.latestModelPath)
-        log.info("inserted latest model")
-      }
-    } (operationName = Some("saving latest recommender"), ChronoUnit.MILLIS)
+      timeTrack {
+        Try {
+          new File(Paths.latestModelPath).delete()
+          log.info("deleted latest model")
+          model.save(spark.sparkContext, Paths.latestModelPath)
+          log.info("inserted latest model")
+        }
+      }(operationName = Some("saving latest recommender"), ChronoUnit.MILLIS)
 
       sender() ! SuccessfulOperation
 

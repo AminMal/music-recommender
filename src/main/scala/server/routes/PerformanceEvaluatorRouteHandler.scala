@@ -3,17 +3,18 @@ package server.routes
 
 import evaluation._
 import service.algebra.PerformanceEvaluatorServiceAlgebra
+import utils.box.BoxSupport
 import utils.{ApplicationJsonSupport, DataFrames}
 
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
-import utils.box.BoxSupport
 
 import scala.concurrent.ExecutionContext
 
 
 /**
  * This class handles http requests for performance evaluator actor
+ *
  * @param performanceEvaluatorService performance evaluator service
  */
 class PerformanceEvaluatorRouteHandler(

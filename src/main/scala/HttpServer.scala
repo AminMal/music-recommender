@@ -2,18 +2,21 @@ package ir.ac.usc
 
 import akka.http.scaladsl.Http
 import akka.util.Timeout
-import scala.concurrent.Future
+
 import java.util.concurrent.TimeUnit
+import scala.concurrent.Future
 import scala.concurrent.duration.DurationInt
 
 object HttpServer {
 
   implicit val timeout: Timeout = Timeout(60, TimeUnit.SECONDS)
-  import Bootstrap.{actorSystem, materializer, routes, appConfig}
+
+  import Bootstrap.{actorSystem, appConfig, materializer, routes}
+
   import actorSystem.dispatcher
 
   val interface: String = appConfig.getString("scommender.server.interface")
-  val port: Int         = appConfig.getInt("scommender.server.port")
+  val port: Int = appConfig.getInt("scommender.server.port")
 
   lazy val runServer: () => Future[Http.ServerBinding] = () => Http().newServerAt(
     interface = interface, port = port

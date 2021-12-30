@@ -1,9 +1,9 @@
 package ir.ac.usc
 package controllers
 
-import akka.actor.{Actor, Props}
-import akka.pattern.pipe
 import utils.box.BoxSupport
+
+import akka.actor.{Actor, Props}
 
 import java.time.LocalDateTime
 
@@ -13,9 +13,10 @@ import java.time.LocalDateTime
  * Only one reference of this actor is created and available.
  */
 class ApplicationStatusController extends Actor with BoxSupport {
+
+  import Bootstrap.services
   import ApplicationStatusController.Messages._
   import ApplicationStatusController.Responses._
-  import Bootstrap.services
   import context.dispatcher
 
   override def receive: Receive = initialReceive
@@ -35,6 +36,7 @@ object ApplicationStatusController {
 
   /**
    * Generates application status actor Props in order to create new reference of this actor.
+   *
    * @return Props for the actor.
    */
   def props: Props = Props(new ApplicationStatusController)
@@ -51,12 +53,12 @@ object ApplicationStatusController {
    */
   object Responses {
     case class HealthCheckResponse(
-                                  matrixModelStatus: Boolean,
-                                  currentTime: String = LocalDateTime.now().toString
+                                    matrixModelStatus: Boolean,
+                                    currentTime: String = LocalDateTime.now().toString
                                   )
 
     case class ModelActivationResponse(
-                                      operationStatus: Boolean
+                                        operationStatus: Boolean
                                       )
   }
 }

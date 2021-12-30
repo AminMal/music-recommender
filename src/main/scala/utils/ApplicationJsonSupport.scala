@@ -4,8 +4,8 @@ package utils
 import conf.ALSConfig
 import controllers.ApplicationStatusController.Responses.{HealthCheckResponse, ModelActivationResponse}
 import controllers.ContextManagerActor.Messages.AddUserRating
-import models.responses._
 import models._
+import models.responses._
 
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
 import org.apache.spark.sql.DataFrame
@@ -24,6 +24,7 @@ trait ApplicationJsonSupport extends SprayJsonSupport with JsonSnakecaseFormatSu
   implicit val metaFormatter: RootJsonFormat[Meta] = jsonFormat1(Meta.apply)
   implicit val songDTOFormatter: RootJsonFormat[SongDTO] = jsonFormat6(SongDTO.apply)
   implicit val recommendationResultFormatter: RootJsonFormat[RecommendationResult] = jsonFormat3(RecommendationResult)
+
   implicit def successResponseFormatter[D](
                                             implicit dataWriter: RootJsonWriter[D]
                                           ): RootJsonWriter[SuccessResponse[D]] = obj => {
@@ -34,13 +35,15 @@ trait ApplicationJsonSupport extends SprayJsonSupport with JsonSnakecaseFormatSu
   }
 
   implicit def successResponseReader[D](
-                                       implicit dataReader: RootJsonReader[D]
+                                         implicit dataReader: RootJsonReader[D]
                                        ): RootJsonReader[SuccessResponse[D]] = json => {
     SuccessResponse(success = true, dataReader.read(json))
   }
 
   implicit val errorBodyFormatter: RootJsonFormat[ErrorBody] = jsonFormat2(ErrorBody.apply)
-  implicit def unsuccessResponseFormatter: RootJsonFormat[FailureResponse] = jsonFormat2(FailureResponse.apply)
+
+  implicit def unsuccessfulResponseFormatter: RootJsonFormat[FailureResponse] = jsonFormat2(FailureResponse.apply)
+
   implicit val addUserRatingFormatter: RootJsonFormat[AddUserRating] = jsonFormat3(AddUserRating.apply)
   implicit val messageFormatter: RootJsonFormat[ResponseMessage] = jsonFormat1(ResponseMessage.apply)
   implicit val addUserFormat: RootJsonFormat[User] = jsonFormat3(User.apply)
@@ -55,11 +58,11 @@ trait ApplicationJsonSupport extends SprayJsonSupport with JsonSnakecaseFormatSu
     }
   }
 
-  implicit def scommenderResponseWriter[T : ClassTag](
-                                                       implicit formatter: RootJsonWriter[T]
-                                                     ): RootJsonWriter[ScommenderResponse[T]] = {
+  implicit def scommenderResponseWriter[T: ClassTag](
+                                                      implicit formatter: RootJsonWriter[T]
+                                                    ): RootJsonWriter[ScommenderResponse[T]] = {
     case result: SuccessResponse[T] => successResponseFormatter(formatter).write(result)
-    case failed: FailureResponse => unsuccessResponseFormatter.write(failed)
+    case failed: FailureResponse => unsuccessfulResponseFormatter.write(failed)
   }
 }
 
