@@ -9,20 +9,24 @@ import controllers.RecommendationController.Messages._
 
 import akka.pattern.ask
 import akka.util.Timeout
+import utils.box.{BoxF, BoxSupport}
 
-import java.util.concurrent.TimeUnit
 import scala.concurrent.{ExecutionContext, Future}
 
-class RecommendationService(recommendationManager: ActorRef)(implicit ec: ExecutionContext) extends RecommendationServiceAlgebra {
+class RecommendationService(recommendationManager: ActorRef)
+                           (
+                             implicit ec: ExecutionContext,
+                             timeout: Timeout
+                           ) extends RecommendationServiceAlgebra with BoxSupport {
 
-  private implicit val timeout: Timeout = Timeout(60, TimeUnit.SECONDS)
+  override def getRecommendations(userId: Int, count: Int): BoxF[RecommendationResult] = {
+    val recommenderBoxF: BoxF[ActorRef] = recommendationManager ??[ActorRef] NewRecommenderActor
 
-  override def getRecommendations(userId: Int, count: Int): Future[RecommendationResult] = {
-    val futureRecommender = (recommendationManager ? NewRecommenderActor).mapTo[ActorRef]
     for {
-      recommender <- futureRecommender
-      recommendations <- (recommender ? GetRecommendations(userId, count)).mapTo[RecommendationResult]
+      recommender <- recommenderBoxF
+      recommendations <- (recommender ??[RecommendationResult] GetRecommendations(userId, count))
     } yield recommendations
+
   }
 
 }

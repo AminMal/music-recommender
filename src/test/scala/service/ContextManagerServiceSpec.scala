@@ -1,11 +1,12 @@
 package ir.ac.usc
 package service
 
-import controllers.ContextManagerActor.Responses.{CMOperationResult, OperationFailure, SuccessfulOperation}
 import models.{SongDTO, User}
-import org.scalatest.{AsyncWordSpec, Matchers}
 
-class ContextManagerServiceSpec extends AsyncWordSpec with Matchers {
+import akka.Done
+import org.scalatest.Matchers
+
+class ContextManagerServiceSpec extends BoxFWordSpecLike with Matchers {
 
   val provider = new ServiceProvider("context-manager-service")
   import provider._
@@ -17,22 +18,21 @@ class ContextManagerServiceSpec extends AsyncWordSpec with Matchers {
   )
 
   "context manager service" should {
-    "add user" in {
-      service.contextManagerService.addUser(dummyUser).map { result =>
-        assert(result == SuccessfulOperation || result.isInstanceOf[OperationFailure])
-      }
+    "add user" inBox {
+      service.contextManagerService.addUser(dummyUser)
+        .map(result => assert(result == Done))
     }
 
-    "add song" in {
+    "add song" inBox {
       service.contextManagerService.addSong(dummySong).map { result =>
-        assert(result == SuccessfulOperation || result.isInstanceOf[OperationFailure])
+        assert(result == Done)
       }
     }
 
-    "add user rating" in {
+    "add user rating" inBox {
       service.contextManagerService.addUserRating(dummyUser.userId.toLong, dummySong.id, 1.0)
         .map { result =>
-          assert(result == SuccessfulOperation || result.isInstanceOf[OperationFailure])
+          assert(result == Done)
         }
     }
   }

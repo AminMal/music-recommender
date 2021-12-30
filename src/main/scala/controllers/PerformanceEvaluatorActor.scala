@@ -6,11 +6,15 @@ import evaluation._
 import utils.DataFrames
 
 import akka.actor.{Actor, ActorLogging, PoisonPill, Props}
+import utils.box.BoxSupport
 import org.apache.spark.mllib.recommendation.MatrixFactorizationModel
 
+/**
+ * This actor takes the responsibility of evaluating models based on whatever evaluation method that is requested.
+ */
+class PerformanceEvaluatorActor extends Actor with ActorLogging with BoxSupport {
 
-class PerformanceEvaluatorActor extends Actor with ActorLogging {
-
+  import context.dispatcher
   import PerformanceEvaluatorActor.Messages._
 
   def receive: Receive = {
@@ -41,19 +45,19 @@ class PerformanceEvaluatorActor extends Actor with ActorLogging {
           }
 
         case EvaluationMode.Wait =>
-          val evaluationDataFrames = evaluationMethods.map(_.evaluate(model))
+          val evaluationDataFrames = toBox(evaluationMethods.map(_.evaluate(model)))
           sender() ! evaluationDataFrames
       }
       self ! PoisonPill
 
 
     case EvaluationRequest(mode, method, model) =>
-      val result = method.evaluate(model)
+      val result = toBox(method.evaluate(model))
 
       mode match {
         case EvaluationMode.FireAndForget =>
-          result.show(100)
-        case ir.ac.usc.evaluation.EvaluationMode.Wait =>
+          result.foreach(_.show(100))
+        case EvaluationMode.Wait =>
           sender() ! result
       }
       self ! PoisonPill
@@ -63,6 +67,9 @@ class PerformanceEvaluatorActor extends Actor with ActorLogging {
 }
 
 object PerformanceEvaluatorActor {
+  /**
+   * Messages that this actor accepts
+   */
   object Messages {
     case class EvaluationRequest(
                                 mode: EvaluationMode,
@@ -76,5 +83,9 @@ object PerformanceEvaluatorActor {
                                       )
   }
 
+  /**
+   * Generates performance evaluator actor Props in order to create new reference of this actor.
+   * @return props of this actor
+   */
   def props: Props = Props[PerformanceEvaluatorActor]
 }

@@ -3,6 +3,10 @@ package evaluation
 
 import scala.util.Try
 
+
+/**
+ * an enumeration object holding performance evaluation metrics.
+ */
 object MetricsEnum extends Enumeration {
 
   type MetricsEnum = Value

@@ -4,8 +4,11 @@ package utils
 import spray.json.DefaultJsonProtocol
 
 
+/**
+ * This trait provides snakecase json formatting.
+ */
 trait JsonSnakecaseFormatSupport extends DefaultJsonProtocol {
-  import reflect._
+  import reflect.ClassTag
 
   override protected def extractFieldNames(classTag: ClassTag[_]): Array[String] = {
     import java.util.Locale
@@ -21,4 +24,7 @@ trait JsonSnakecaseFormatSupport extends DefaultJsonProtocol {
   private val REPLACEMENT = "$1_$2"
 }
 
+/**
+ * JsonSnakecaseFormatSupport companion object, can be imported instead of extensing trait.
+ */
 object JsonSnakecaseFormatSupport extends JsonSnakecaseFormatSupport

@@ -3,6 +3,10 @@ package utils
 
 import org.apache.spark.sql.types.{DataTypes, StructField, StructType}
 
+
+/**
+ * Utility object holding available dataframe schemas used in domain
+ */
 object DataFrameSchemas {
 
   val usersSchema: StructType = StructType(Seq(

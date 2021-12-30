@@ -1,6 +1,12 @@
 package ir.ac.usc
 package models.responses
 
+
+/**
+ * Error details returned in failure response
+ * @param code error code (could be resulting http status code)
+ * @param message optional message to provide more information about the error
+ */
 case class ErrorBody(
                     code: Int,
                     message: Option[String]

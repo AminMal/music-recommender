@@ -14,24 +14,47 @@ import org.apache.spark.sql.{DataFrame, Row}
 import scala.concurrent.{ExecutionContext, Future}
 
 
+/**
+ * Singleton object that has methods to read all domain dataframes
+ */
 object DataFrames {
 
+  /**
+   * read users dataframe data.
+   * @return users dataframe
+   */
   def usersDF: DataFrame = spark.read
     .schema(usersSchema)
     .parquet(path = Paths.usersPath)
 
+  /**
+   * read songs dataframe data.
+   * @return songs dataframe
+   */
   def songsDF: DataFrame = spark.read
     .schema(songsStruct)
     .parquet(path = Paths.songsPath)
 
+  /**
+   * read ratings dataframe data.
+   * @return ratings dataframe.
+   */
   def ratingsDF: DataFrame = spark.read
     .schema(ratingsStruct)
     .parquet(path = Paths.ratingsPath)
 
+  /**
+   * read train dataframe data
+   * @return train dataframe
+   */
   def trainingDF: DataFrame = spark.read
     .schema(ratingsStruct)
     .parquet(path = Paths.trainPath)
 
+  /**
+   * read test dataframe data
+   * @return test dataframe
+   */
   def testDataDF: DataFrame = spark.read
     .parquet(path = Paths.testPath)
 
@@ -63,9 +86,19 @@ object DataFrames {
       .toMat(aggregatorSink)(Keep.right)
   }
 
+  /**
+   * reads ratings dataframe streaming.
+   * @param ec execution context
+   * @return rdd for ratings wrapped in future.
+   */
   def ratingsRddF(implicit ec: ExecutionContext): Future[RDD[Rating]] =
     ratingsGraph.run().map(ratings => spark.sparkContext.parallelize(ratings))(executor = ec)
 
+  /**
+   * reads train dataframe streaming.
+   * @param ec execution context
+   * @return rdd for train data wrapped in future.
+   */
   def trainRddF(implicit ec: ExecutionContext): Future[RDD[Rating]] =
     trainingGraph.run().map(ratings => spark.sparkContext.parallelize(ratings))(executor = ec)
 

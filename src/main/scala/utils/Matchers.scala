@@ -9,6 +9,10 @@ import akka.http.scaladsl.model.Uri.Path
 import akka.http.scaladsl.server.PathMatcher.{Matched, Unmatched}
 import akka.http.scaladsl.server.{PathMatcher, PathMatcher1}
 
+
+/**
+ * Custom path matchers are stored here.
+ */
 object Matchers {
 
   object EvaluationMethod extends PathMatcher1[MetricsEnum] {

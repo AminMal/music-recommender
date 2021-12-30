@@ -11,6 +11,7 @@ import utils.DataFrames.trainRddF
 
 import akka.actor.{Actor, ActorLogging, ActorRef}
 import akka.pattern.pipe
+import utils.box.BoxSupport
 import org.apache.spark.sql.SaveMode
 
 import java.io.File
@@ -18,7 +19,12 @@ import java.time.temporal.ChronoUnit
 import scala.util.{Failure, Success, Try}
 
 
-private[controllers] class ContextManagerSlaveActor extends Actor with ActorLogging {
+/**
+ * This actor is used to do time taking, and blocking tasks that context manager actor
+ * wants to do. for each command, a new reference is created as a child of context manager actor
+ * and gets killed right after the work is done.
+ */
+private[controllers] class ContextManagerSlaveActor extends Actor with ActorLogging with BoxSupport {
   import Bootstrap.spark
   import utils.Common.timeTrack
 
@@ -30,35 +36,35 @@ private[controllers] class ContextManagerSlaveActor extends Actor with ActorLogg
     log.info(s"(${self.path.name}) got poison pill from parent")
 
   def receive: Receive = {
-    case request: (AddUserRating, ActorRef) =>
-      val (userRating, replyTo) = request
-      handleDFAppend {
-        (userRating :: Nil).toDF(AddUserRating.dfColNames: _*)
-          .write
-          .mode(SaveMode.Append)
-          .parquet(path = Paths.ratingsPath)
-      } (parent = sender(), replyTo = replyTo)
+    case AddDataRequestWithSender(request, replyTo) =>
+      request match {
+        case req: AddUserRating =>
+          handleDFAppend {
+            (req :: Nil).toDF(AddUserRating.dfColNames: _*)
+              .write
+              .mode(SaveMode.Append)
+              .parquet(path = Paths.ratingsPath)
+          } (parent = sender(), replyTo = replyTo)
+        case req: AddUser =>
+          /* user validations should be done on another service */
+          val newUserDF = (req.user :: Nil)
+            .toDF(User.dfColNames: _*)
 
-    case (AddUser(user), replyTo: ActorRef) =>
-      /* user validations should be done on another service */
-      val newUserDF = (user :: Nil)
-        .toDF(User.dfColNames: _*)
+          handleDFAppend {
+            newUserDF.write
+              .mode(SaveMode.Append)
+              .parquet(path = Paths.usersPath)
+          }(parent = sender(), replyTo = replyTo)
+        case req: AddSong =>
+          val newSongDF = (req.song :: Nil)
+            .toDF(SongDTO.dfColNames: _*)
 
-      handleDFAppend {
-        newUserDF.write
-          .mode(SaveMode.Append)
-          .parquet(path = Paths.usersPath)
-      }(parent = sender(), replyTo = replyTo)
-
-    case (AddSong(song), replyTo: ActorRef) =>
-      val newSongDF = (song :: Nil)
-        .toDF(SongDTO.dfColNames: _*)
-
-      handleDFAppend {
-        newSongDF.write
-          .mode(SaveMode.Append)
-          .parquet(path = Paths.songsPath)
-      } (parent = sender(), replyTo = replyTo)
+          handleDFAppend {
+            newSongDF.write
+              .mode(SaveMode.Append)
+              .parquet(path = Paths.songsPath)
+          } (parent = sender(), replyTo = replyTo)
+      }
 
     case UpdateModel =>
       import context.dispatcher
@@ -94,7 +100,7 @@ private[controllers] class ContextManagerSlaveActor extends Actor with ActorLogg
 }
 
 object ContextManagerSlaveActor {
-  def handleDFAppend(code: => Unit)(parent: ActorRef, replyTo: ActorRef): Unit =
+  private def handleDFAppend(code: => Unit)(parent: ActorRef, replyTo: ActorRef): Unit =
     Try(code) match {
       case Failure(exception) =>
         parent ! OperationBindResult(

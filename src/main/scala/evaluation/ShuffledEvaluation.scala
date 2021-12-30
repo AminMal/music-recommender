@@ -9,6 +9,12 @@ import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.DataFrame
 
 
+/**
+ * Instances of this class, calculate base data (meaning userId, songId, ratings and prediction) that other subclasses
+ * can use to perform evaluations
+ * @param ratings original ratings
+ * @param testData data to test model with
+ */
 class ShuffledEvaluation(
                           val ratings: DataFrame,
                           val testData: DataFrame
