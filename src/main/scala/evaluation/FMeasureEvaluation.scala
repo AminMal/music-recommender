@@ -1,4 +1,4 @@
-package ir.ac.usc
+package scommender
 package evaluation
 
 import evaluation.MetricsEnum.MetricsEnum
@@ -10,8 +10,9 @@ import org.apache.spark.sql.functions.expr
 
 /**
  * Instances of this class can calculate f-measure (or f-score) of a model.
- * @param ratings dataframe of original ratings
- * @param testData data to test model with
+ *
+ * @param ratings   dataframe of original ratings
+ * @param testData  data to test model with
  * @param threshold predictions greater than this threshold are behaved as positives.
  */
 class FMeasureEvaluation(

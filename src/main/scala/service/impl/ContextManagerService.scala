@@ -1,24 +1,22 @@
-package ir.ac.usc
+package scommender
 package service.impl
 
 import controllers.ContextManagerActor.Messages._
 import controllers.ContextManagerActor.Responses._
 import models.{SongDTO, User}
 import service.algebra.ContextManagerServiceAlgebra
+import utils.box.{BoxF, BoxSupport}
 
 import akka.Done
 import akka.actor.ActorRef
-import akka.pattern.ask
 import akka.util.Timeout
-import utils.box.{BoxF, BoxSupport}
 import org.apache.spark.mllib.recommendation.MatrixFactorizationModel
 
-import java.util.concurrent.TimeUnit
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.ExecutionContext
 
 class ContextManagerService(contextManagerActor: ActorRef)(
-                           implicit timeout: Timeout,
-                           ec: ExecutionContext
+  implicit timeout: Timeout,
+  ec: ExecutionContext
 ) extends ContextManagerServiceAlgebra with BoxSupport {
 
   override def updateModel(): Unit = {

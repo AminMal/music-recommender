@@ -1,5 +1,6 @@
-package ir.ac.usc
+package scommender
 package evaluation
+
 import evaluation.MetricsEnum.MetricsEnum
 
 import org.apache.spark.mllib.recommendation.MatrixFactorizationModel
@@ -9,8 +10,9 @@ import org.apache.spark.sql.functions._
 
 /**
  * Instances of this class can evaluate precision and recall for a model.
- * @param ratings original ratings
- * @param testData data to test model with
+ *
+ * @param ratings   original ratings
+ * @param testData  data to test model with
  * @param threshold predictions greater than this threshold are behaved as positives
  */
 class PrecisionRecallEvaluator(

@@ -1,4 +1,4 @@
-package ir.ac.usc
+package scommender
 
 import utils.box.{BoxF, Failed, Successful}
 import org.scalactic.source
@@ -7,7 +7,7 @@ import org.scalatest.{Assertion, AsyncWordSpec}
 
 trait BoxFWordSpecLike extends AsyncWordSpec {
 
-  trait Bisar {
+  trait InBoxWordProvider {
     val leftString: String
     val pos: source.Position
 
@@ -21,7 +21,7 @@ trait BoxFWordSpecLike extends AsyncWordSpec {
     }
   }
 
-  implicit def strToBisar(s: String)(implicit pos: source.Position): Bisar = new Bisar {
+  implicit def strToInBoxProvider(s: String)(implicit pos: source.Position): InBoxWordProvider = new InBoxWordProvider {
     override val leftString: String = s
     override val pos: Position = pos
   }

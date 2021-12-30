@@ -1,10 +1,10 @@
-package ir.ac.usc
+package scommender
 package server
 
 import exception.ScommenderException
 
 import akka.http.scaladsl.server.Directives._
-import akka.http.scaladsl.server.{ExceptionHandler, _}
+import akka.http.scaladsl.server.ExceptionHandler
 
 
 /**

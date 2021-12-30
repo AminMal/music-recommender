@@ -1,4 +1,4 @@
-package ir.ac.usc
+package scommender
 package evaluation
 
 import scala.util.Try
@@ -12,10 +12,11 @@ object EvaluationMode extends Enumeration {
   type EvaluationMode = Value
 
   val FireAndForget: EvaluationMode = Value("fire and forget")
-  val Wait: EvaluationMode          = Value("wait")
+  val Wait: EvaluationMode = Value("wait")
 
   /**
    * returns an optional EvaluationMethod based on the given name, if found.
+   *
    * @param name name of the mode
    * @return Optional mode
    */

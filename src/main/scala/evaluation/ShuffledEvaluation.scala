@@ -1,4 +1,4 @@
-package ir.ac.usc
+package scommender
 package evaluation
 
 import Bootstrap.spark
@@ -12,7 +12,8 @@ import org.apache.spark.sql.DataFrame
 /**
  * Instances of this class, calculate base data (meaning userId, songId, ratings and prediction) that other subclasses
  * can use to perform evaluations
- * @param ratings original ratings
+ *
+ * @param ratings  original ratings
  * @param testData data to test model with
  */
 class ShuffledEvaluation(
@@ -21,11 +22,6 @@ class ShuffledEvaluation(
                         ) extends EvaluationMethod {
 
   override val metric: MetricsEnum = MetricsEnum.Shuffled
-
-  private def predictRatings(model: MatrixFactorizationModel): RDD[Rating] = {
-    val usersProduct = testData.collect().map(row => row.getAs[Long]("user_id").toInt -> row.getAs[Long]("song_id").toInt)
-    model.predict(spark.sparkContext.parallelize(usersProduct))
-  }
 
   def evaluate(model: MatrixFactorizationModel): DataFrame = {
     val predictions = predictRatings(model)
@@ -42,5 +38,10 @@ class ShuffledEvaluation(
         predictionsDF.col("rating"),
         ratings.col("target")
       )
+  }
+
+  private def predictRatings(model: MatrixFactorizationModel): RDD[Rating] = {
+    val usersProduct = testData.collect().map(row => row.getAs[Long]("user_id").toInt -> row.getAs[Long]("song_id").toInt)
+    model.predict(spark.sparkContext.parallelize(usersProduct))
   }
 }

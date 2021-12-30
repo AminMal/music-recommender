@@ -1,17 +1,16 @@
-package ir.ac.usc
+package scommender
 package service.impl
 
-import akka.actor.ActorRef
+import controllers.RecommendationController.Messages._
+import controllers.RecommenderManagerActor.Messages._
 import models.RecommendationResult
 import service.algebra.RecommendationServiceAlgebra
-import controllers.RecommenderManagerActor.Messages._
-import controllers.RecommendationController.Messages._
-
-import akka.pattern.ask
-import akka.util.Timeout
 import utils.box.{BoxF, BoxSupport}
 
-import scala.concurrent.{ExecutionContext, Future}
+import akka.actor.ActorRef
+import akka.util.Timeout
+
+import scala.concurrent.ExecutionContext
 
 class RecommendationService(recommendationManager: ActorRef)
                            (

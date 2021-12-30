@@ -1,15 +1,15 @@
-package ir.ac.usc
+package scommender
 package models
 
 import org.apache.spark.sql.Row
 
 case class SongDTO(
-                  id: Long,
-                  name: String,
-                  length: Long,
-                  genreIds: String,
-                  artistName: String,
-                  language: Double // lack of good data
+                    id: Long,
+                    name: String,
+                    length: Long,
+                    genreIds: String,
+                    artistName: String,
+                    language: Double // lack of good data
                   )
 
 object SongDTO {

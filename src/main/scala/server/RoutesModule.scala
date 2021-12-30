@@ -1,4 +1,4 @@
-package ir.ac.usc
+package scommender
 package server
 
 import server.routes._
@@ -11,6 +11,7 @@ import akka.http.scaladsl.server.Route
 
 /**
  * Given service module, this class can handle http requests with fault tolerance
+ *
  * @param services an instance of service module
  */
 class RoutesModule(services: ServiceModule)(implicit routeHandlerSystem: ActorSystem) {

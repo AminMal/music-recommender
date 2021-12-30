@@ -1,27 +1,26 @@
-package ir.ac.usc
+package scommender
 
-import org.apache.spark.sql.SparkSession
-import org.apache.log4j.{Level, Logger}
-import akka.actor.ActorSystem
-import akka.stream.Materializer
 import server.RoutesModule
 import service.ServiceModule
 
+import akka.actor.ActorSystem
+import akka.stream.Materializer
 import com.typesafe.config.{Config, ConfigFactory}
+import org.apache.log4j.{Level, Logger}
+import org.apache.spark.sql.SparkSession
 
 object Bootstrap {
-
-  val appConfig: Config = ConfigFactory.load()
-
-  Logger.getLogger("org").setLevel(Level.ERROR)
-
   final val spark = SparkSession
     .builder()
     .appName("scommender")
-    .config("spark.master", "local[8]")  // todo, this needs to be removed in production
+    .config("spark.master", "local[4]") // todo, this needs to be removed in production
     .getOrCreate()
 
+  Logger.getLogger("org").setLevel(Level.ERROR)
+  val appConfig: Config = ConfigFactory.load()
+
   import utils.SparkFunctions._
+
   spark.udf.register("geterr", getError)
   spark.udf.register("getstate", getState)
   spark.udf.register("fMeasure", fMeasure)

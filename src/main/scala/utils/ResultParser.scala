@@ -1,4 +1,4 @@
-package ir.ac.usc
+package scommender
 package utils
 
 import models.{SongDTO, User}
@@ -13,6 +13,7 @@ trait ResultParser {
 
   /**
    * get user object from user id
+   *
    * @param userId user id
    * @return the actual user, which is optional
    */
@@ -20,6 +21,7 @@ trait ResultParser {
 
   /**
    * get songs from recommendation result
+   *
    * @param predictions recommender predictions
    * @return songs fetched from song ids
    */

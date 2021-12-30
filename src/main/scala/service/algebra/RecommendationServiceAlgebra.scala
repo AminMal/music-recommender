@@ -1,9 +1,7 @@
-package ir.ac.usc
+package scommender
 package service.algebra
 
-import scala.concurrent.Future
 import models.RecommendationResult
-
 import utils.box.BoxF
 
 
@@ -14,8 +12,9 @@ trait RecommendationServiceAlgebra {
 
   /**
    * recommend songs for user
+   *
    * @param userId user to recommend songs for
-   * @param count number of recommendations
+   * @param count  number of recommendations
    * @return an object of recommendation result
    */
   def getRecommendations(userId: Int, count: Int = 6): BoxF[RecommendationResult]

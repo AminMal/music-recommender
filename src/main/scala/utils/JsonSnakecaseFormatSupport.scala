@@ -1,4 +1,4 @@
-package ir.ac.usc
+package scommender
 package utils
 
 import spray.json.DefaultJsonProtocol
@@ -8,7 +8,12 @@ import spray.json.DefaultJsonProtocol
  * This trait provides snakecase json formatting.
  */
 trait JsonSnakecaseFormatSupport extends DefaultJsonProtocol {
+
   import reflect.ClassTag
+
+  private val PASS1 = """([A-Z]+)([A-Z][a-z])""".r
+  private val PASS2 = """([a-z\d])([A-Z])""".r
+  private val REPLACEMENT = "$1_$2"
 
   override protected def extractFieldNames(classTag: ClassTag[_]): Array[String] = {
     import java.util.Locale
@@ -18,10 +23,6 @@ trait JsonSnakecaseFormatSupport extends DefaultJsonProtocol {
 
     super.extractFieldNames(classTag).map(snakecase)
   }
-
-  private val PASS1 = """([A-Z]+)([A-Z][a-z])""".r
-  private val PASS2 = """([a-z\d])([A-Z])""".r
-  private val REPLACEMENT = "$1_$2"
 }
 
 /**

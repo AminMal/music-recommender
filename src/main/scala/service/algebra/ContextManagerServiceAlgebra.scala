@@ -1,15 +1,12 @@
-package ir.ac.usc
+package scommender
 package service.algebra
 
 import controllers.ContextManagerActor.Messages.AddUserRating
-import controllers.ContextManagerActor.Responses.CMOperationResult
 import models.{SongDTO, User}
+import utils.box.BoxF
 
 import akka.Done
-import utils.box.BoxF
 import org.apache.spark.mllib.recommendation.MatrixFactorizationModel
-
-import scala.concurrent.Future
 
 
 /**
@@ -24,12 +21,14 @@ trait ContextManagerServiceAlgebra {
 
   /**
    * fetch latest matrix factorization model that application is using
+   *
    * @return if a trained model exists, that model is returned, else empty value for Option[MatrixFactorizationModel]
    */
   def getLatestModel: BoxF[Option[MatrixFactorizationModel]]
 
   /**
    * add a song rating for a user
+   *
    * @param userId id for the user
    * @param songId id for the song
    * @param rating rating to the song
@@ -39,6 +38,7 @@ trait ContextManagerServiceAlgebra {
 
   /**
    * add a song rating for a user
+   *
    * @param request object of type AddUserRating, holding userId, songId, rating
    * @return operation result, could be failed or successful
    */
@@ -46,6 +46,7 @@ trait ContextManagerServiceAlgebra {
 
   /**
    * add a user to users
+   *
    * @param user user to add
    * @return operation result, could be failed or successful
    */
@@ -53,6 +54,7 @@ trait ContextManagerServiceAlgebra {
 
   /**
    * add a song to songs
+   *
    * @param song song to add
    * @return operation result, could be failed or successful
    */

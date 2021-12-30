@@ -1,9 +1,10 @@
-package ir.ac.usc
+package scommender
 package exception
 
 import models.responses.{ErrorBody, FailureResponse}
 
 import akka.http.scaladsl.model.StatusCode
+
 import scala.util.Try
 
 
@@ -13,12 +14,14 @@ import scala.util.Try
  */
 trait ScommenderException extends Throwable {
   def toResponseBody: FailureResponse
+
   def status: StatusCode
 }
 
 object ScommenderException {
   /**
    * Converts any type of throwable to 500 ScommenderException
+   *
    * @param throwable the original throwable
    * @return new instance of scommender exception
    */

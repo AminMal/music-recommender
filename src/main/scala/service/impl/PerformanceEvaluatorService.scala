@@ -1,36 +1,26 @@
-package ir.ac.usc
+package scommender
 package service.impl
 
 import controllers.PerformanceEvaluatorActor.Messages._
 import evaluation.{EvaluationMethod, EvaluationMode}
 import exception.ModelNotTrainedYetException
 import service.algebra.{ContextManagerServiceAlgebra, PerformanceEvaluatorServiceAlgebra}
+import utils.box.{BoxF, BoxSupport}
 
 import akka.actor.ActorRef
-import akka.pattern.ask
 import akka.util.Timeout
-import utils.box.{BoxF, BoxSupport}
 import org.apache.spark.mllib.recommendation.MatrixFactorizationModel
 import org.apache.spark.sql.DataFrame
 
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.ExecutionContext
 
 class PerformanceEvaluatorService(
                                    performanceEvaluator: () => ActorRef,
                                    contextService: ContextManagerServiceAlgebra
                                  )(
-    implicit timeout: Timeout,
-    executionContext: ExecutionContext
-  ) extends PerformanceEvaluatorServiceAlgebra with BoxSupport {
-
-  override def evaluate(model: MatrixFactorizationModel, method: EvaluationMethod): BoxF[DataFrame] = {
-    val evaluationRequest = EvaluationRequest(
-      mode = EvaluationMode.Wait,
-      model = model,
-      method = method
-    )
-    performanceEvaluator() ??[DataFrame] evaluationRequest
-  }
+                                   implicit timeout: Timeout,
+                                   executionContext: ExecutionContext
+                                 ) extends PerformanceEvaluatorServiceAlgebra with BoxSupport {
 
   override def evaluateDispatched(model: MatrixFactorizationModel, method: EvaluationMethod): Unit = {
     performanceEvaluator() ! EvaluationRequest(
@@ -53,5 +43,14 @@ class PerformanceEvaluatorService(
       val model = modelOpt.getOrElse(throw ModelNotTrainedYetException)
       evaluate(model, method)
     }
+  }
+
+  override def evaluate(model: MatrixFactorizationModel, method: EvaluationMethod): BoxF[DataFrame] = {
+    val evaluationRequest = EvaluationRequest(
+      mode = EvaluationMode.Wait,
+      model = model,
+      method = method
+    )
+    performanceEvaluator() ??[DataFrame] evaluationRequest
   }
 }

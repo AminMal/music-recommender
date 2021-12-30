@@ -1,4 +1,4 @@
-package ir.ac.usc
+package scommender
 package conf
 
 /**
@@ -10,14 +10,14 @@ package conf
 
 object RecommenderDataPaths {
 
-  private final val baseDir: String   = "src/main/resources/data/"
-  val usersPath: String               = baseDir + "users"
-  val songsPath: String               = baseDir + "songs"
-  val ratingsPath: String             = baseDir + "ratings"
-  val trainPathCSV: String            = baseDir + "train.csv"
-  val trainPath: String               = baseDir + "train"
-  val testPathCSV: String             = baseDir + "test.csv"
-  val testPath: String                = baseDir + "test"
-  val latestModelPath: String         = baseDir + "latest_model"
+  private final val baseDir: String = "src/main/resources/data/"
+  val usersPath: String = baseDir + "users"
+  val songsPath: String = baseDir + "songs"
+  val ratingsPath: String = baseDir + "ratings"
+  val trainPathCSV: String = baseDir + "train.csv"
+  val trainPath: String = baseDir + "train"
+  val testPathCSV: String = baseDir + "test.csv"
+  val testPath: String = baseDir + "test"
+  val latestModelPath: String = baseDir + "latest_model"
 
 }
