@@ -1,77 +1,68 @@
 package scommender
 package utils
 
-import Bootstrap.{materializer, spark}
+import Bootstrap.spark
 import conf.{RecommenderDataPaths => Paths}
 import utils.DataFrameSchemas._
 
-import akka.NotUsed
-import akka.stream.scaladsl.{Flow, Keep, RunnableGraph, Sink, Source}
 import org.apache.spark.mllib.recommendation.Rating
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.{DataFrame, Row}
+import utils.box.{BoxF, BoxSupport}
+import utils.Common._
 
+import java.time.temporal.ChronoUnit
 import scala.concurrent.{ExecutionContext, Future}
 
 
 /**
  * Singleton object that has methods to read all domain dataframes
  */
-object DataFrames {
+object DataFrames extends BoxSupport {
 
-  /**
-   * read users dataframe data.
+  /** reads training data dataframe.
    *
-   * @return users dataframe
+   * @return training dataframe
    */
-  def usersDF: DataFrame = spark.read
-    .schema(usersSchema)
-    .parquet(path = Paths.usersPath)
+  def trainingDF: DataFrame = spark.read
+    .schema(ratingsStruct)
+    .parquet(Paths.trainPath)
 
-  /**
-   * read songs dataframe data.
+  /** reads rating data dataframe.
+   *
+   * @return rating dataframe
+   */
+  def ratingsDF: DataFrame = spark.read
+    .schema(ratingsStruct)
+    .parquet(Paths.ratingsPath)
+
+  /** reads songs data dataframe
    *
    * @return songs dataframe
    */
   def songsDF: DataFrame = spark.read
     .schema(songsStruct)
-    .parquet(path = Paths.songsPath)
+    .parquet(Paths.songsPath)
 
-  /**
-   * read test dataframe data
+  /** reads users data dataframe
+   *
+   * @return users dataframe
+   */
+  def usersDF: DataFrame = spark.read
+    .schema(usersSchema)
+    .parquet(Paths.usersPath)
+
+  /** reads test data dataframe
    *
    * @return test dataframe
    */
   def testDataDF: DataFrame = spark.read
-    .parquet(path = Paths.testPath)
+    .schema(testStruct)
+    .parquet(Paths.testPath)
 
-  /**
-   * reads ratings dataframe streaming.
-   *
-   * @param ec execution context
-   * @return rdd for ratings wrapped in future.
-   */
-  def ratingsRddF(implicit ec: ExecutionContext): Future[RDD[Rating]] =
-    ratingsGraph.run().map(ratings => spark.sparkContext.parallelize(ratings))(executor = ec)
 
-  private def ratingsGraph(implicit ec: ExecutionContext): RunnableGraph[Future[Seq[Rating]]] = {
-    dfSource(ratingsDF).viaMat(rowConversionFlow)(Keep.none)
-      .toMat(aggregatorSink)(Keep.right)
-  }
-
-  /**
-   * read ratings dataframe data.
-   *
-   * @return ratings dataframe.
-   */
-  def ratingsDF: DataFrame = spark.read
-    .schema(ratingsStruct)
-    .parquet(path = Paths.ratingsPath)
-
-  private def dfSource(df: DataFrame): Source[Row, NotUsed] = Source(df.collect())
-
-  private def rowConversionFlow(implicit ec: ExecutionContext): Flow[Row, Rating, NotUsed] = {
-    Flow[Row].mapAsyncUnordered[Rating](4)(row => Future {
+  private val rowToRating: Row => Rating =
+    row => {
       val userId = row.getLong(0).toInt
       val songId = row.getLong(1).toInt
       val target = row.getDouble(2)
@@ -81,32 +72,35 @@ object DataFrames {
         product = songId,
         rating = target
       )
-    })
   }
 
-  private def aggregatorSink: Sink[Rating, Future[Seq[Rating]]] = Sink.seq[Rating]
-
-  /**
-   * reads train dataframe streaming.
+  /** reads training dataframe, and converts it to BoxF instance of training data RDD.
    *
-   * @param ec execution context
-   * @return rdd for train data wrapped in future.
+   * @param ec execution context to perform timetracking
+   * @return training data rdd.
    */
-  def trainRddF(implicit ec: ExecutionContext): Future[RDD[Rating]] =
-    trainingGraph.run().map(ratings => spark.sparkContext.parallelize(ratings))(executor = ec)
-
-  private def trainingGraph(implicit ex: ExecutionContext): RunnableGraph[Future[Seq[Rating]]] = {
-    dfSource(trainingDF).viaMat(rowConversionFlow)(Keep.none)
-      .toMat(aggregatorSink)(Keep.right)
+  def trainRddBoxF(implicit ec: ExecutionContext): BoxF[RDD[Rating]] = {
+    toBoxF {
+      timeTrackFuture(operationName = Some("loading training rdd"), ChronoUnit.MILLIS) {
+        Future.successful {
+          spark.sparkContext.parallelize(trainingDF.collect().map(rowToRating))
+        }
+      }
+    }
   }
 
-  /**
-   * read train dataframe data
+  /** reads rating dataframe, and converts it to BoxF instance of rating data RDD.
    *
-   * @return train dataframe
+   * @param ec execution context to perform timetracking
+   * @return rating data rdd
    */
-  def trainingDF: DataFrame = spark.read
-    .schema(ratingsStruct)
-    .parquet(path = Paths.trainPath)
-
+  def ratingRddBoxF(implicit ec: ExecutionContext): BoxF[RDD[Rating]] =
+    toBoxF {
+      timeTrackFuture(operationName = Some("loading ratings rdd"), ChronoUnit.MILLIS) {
+        Future.successful {
+          spark.sparkContext
+            .parallelize(ratingsDF.collect().map(rowToRating))
+        }
+      }
+    }
 }
