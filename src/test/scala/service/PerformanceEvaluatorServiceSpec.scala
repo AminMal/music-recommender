@@ -16,9 +16,8 @@ class PerformanceEvaluatorServiceSpec extends BoxFWordSpecLike with Matchers wit
 
   private val newModel: BoxF[MatrixFactorizationModel] = {
     for {
-      ratings <- toBoxF(DataFrames.trainRddF)
-      model = ALSBuilder.forConfig(ALSDefaultConf).run(ratings)
-    } yield model
+      ratings <- DataFrames.trainRddBoxF
+    } yield ALSBuilder.forConfig(ALSDefaultConf).run(ratings)
   }
 
   private val shuffledMethod = new ShuffledEvaluation(
