@@ -3,7 +3,7 @@ package utils.box
 
 import exception.ScommenderException
 
-import scala.util.Try
+import scala.util.{Failure, Success, Try}
 import scala.util.control.NonFatal
 
 
@@ -61,12 +61,36 @@ sealed trait Box[+T] {
   /** applies the given side effect, but also returns this, can be used for seeing the value inside,
    * but also, holding the same value
    *
+   * {{{
+   *   val intBox: Box[Int] = Successful[Int](2)
+   *   intBox.peek(intValue => println(s"value inside box is $intValue"))
+   *     .fold(...) // you can use fold method here, since peek returns the same value
+   * }}}
+   *
    * @param f function that applies side effect
    * @tparam U return type of the given function, is ignored
    * @return this
    */
   def peek[U](f: T => U): this.type = {
     foreach[U](f); this
+  }
+
+  /** applies the given side effect function on failure cause, but also returns this object
+   *
+   * {{{
+   *   val intBox: Box[Int] = Failed[Int](someException)
+   *   intBox.peekFailure(println)
+   *     .map(_.toString)  // you can use the map function here because peekFailure returns the same value
+   *     .recover(ex => ...)
+   * }}}
+   *
+   * @param f peek function to apply to failure cause
+   * @tparam U return type of peek function, ignored
+   * @return this
+   */
+  def peekFailure[U](f: ScommenderException => U): this.type = {
+    ifFailed(f)
+    this
   }
 
   /** recovers the result of box in case of failure.
@@ -83,8 +107,8 @@ sealed trait Box[+T] {
   /** recovers failure mode with a prepared box value.
    *
    * @param f function to use in case of failure
-   * @tparam U
-   * @return
+   * @tparam U return type of recovery function after applied to failure cause
+   * @return result of application of given function to failure cause
    */
   def recoverWith[U >: T](f: ScommenderException => Box[U]): Box[U] = this match {
     case successCase@Successful(_) => successCase
@@ -106,6 +130,47 @@ sealed trait Box[+T] {
    */
   def flatten[U](implicit ev: T <:< Box[U]): Box[U]
 
+  /** shows weather the result is successful or has failed
+   *
+   * @return success state of this object
+   */
+  def isSuccessful: Boolean
+
+
+  /** shows wether the result is successful or has failed
+   *
+   * @return failure state of this object
+   */
+  def hasFailed: Boolean
+
+  /** returns this instance as an instance of Option[T]
+   *
+   * @return this value converted to Option
+   */
+  def toOption: Option[T] =
+    fold(
+      fa = _ => None, fb = Some.apply
+    )
+
+  /** returns this instance as an instance of Either[ScommenderException, T]
+   *
+   * @return this value converted to Either
+   */
+  def toEither: Either[ScommenderException, T] =
+    fold(
+      fa = throwable => Left[ScommenderException, T](throwable),
+      fb = value => Right[ScommenderException, T](value)
+    )
+
+  /** returns this instance as an instance of Try[T]
+   *
+   * @return this value converted to Try
+   */
+  def toTry: Try[T] =
+    fold(
+      fa = throwable => Failure[T](throwable),
+      fb = value => Success(value)
+    )
 }
 
 /** Companion object for Box trait, which holds some useful functions in order to create box instances.
@@ -152,6 +217,10 @@ case class Successful[+T](value: T) extends Box[T] {
     }
 
   override def ifFailed[U](f: ScommenderException => U): Unit = ()
+
+  override def isSuccessful: Boolean = true
+
+  override def hasFailed: Boolean = false
 }
 
 case class Failed[+T](cause: ScommenderException) extends Box[T] {
@@ -166,6 +235,10 @@ case class Failed[+T](cause: ScommenderException) extends Box[T] {
   override def filter(predicate: T => Boolean): Box[T] = this
 
   override def ifFailed[U](f: ScommenderException => U): Unit = f(cause)
+
+  override def isSuccessful: Boolean = false
+
+  override def hasFailed: Boolean = true
 }
 
 object Failed {
