@@ -7,11 +7,10 @@ import controllers.ContextManagerActor.Messages._
 import controllers.ContextManagerActor.Responses._
 import models.{SongDTO, User}
 import utils.ALSBuilder
-import utils.DataFrames.trainRddF
+import utils.DataFrames.trainRddBoxF
 import utils.box.BoxSupport
 
 import akka.actor.{Actor, ActorLogging, ActorRef}
-import akka.pattern.pipe
 import org.apache.spark.sql.SaveMode
 
 import java.io.File
@@ -70,17 +69,17 @@ private[controllers] class ContextManagerSlaveActor extends Actor with ActorLogg
     case UpdateModel =>
       import context.dispatcher
 
-      val modelFuture = for {
-        config <- configService.getLatestConfig
-        ratings <- trainRddF
+      val modelBoxF = for {
+        config <- toBoxF(configService.getLatestConfig)
+        ratings <- trainRddBoxF
       } yield {
         log.info(s"updating model for config: $config")
-        timeTrack(operationName = Some("creating als model")) {
+        timeTrack(operationName = Some("creating als model"), ChronoUnit.MILLIS) {
           ALSBuilder.forConfig(config).run(ratings)
         }
       }
 
-      modelFuture.map(SuccessfulUpdateOnModel.apply)
+      modelBoxF.map(SuccessfulUpdateOnModel.apply)
         .pipeTo(sender)
 
     case Save(model) =>

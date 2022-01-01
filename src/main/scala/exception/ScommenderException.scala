@@ -4,8 +4,10 @@ package exception
 import models.responses.{ErrorBody, FailureResponse}
 
 import akka.http.scaladsl.model.StatusCode
+import scommender.utils.box.Box
 
 import scala.util.Try
+import scala.util.control.NonFatal
 
 
 /**
@@ -27,10 +29,12 @@ object ScommenderException {
    */
   def adopt(throwable: Throwable): ScommenderException = throwable match {
     case se: ScommenderException => se
-    case other =>
+    case NonFatal(other) =>
       new ScommenderException {
         override def toResponseBody: FailureResponse =
-          FailureResponse(error = ErrorBody(code = 500, message = Try(other.getMessage.take(140)).toOption))
+          FailureResponse(
+            error = ErrorBody(code = 500, message = Box(other.getMessage.take(100)).toOption)
+          )
 
         override def status: StatusCode = 500
       }

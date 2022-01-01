@@ -6,7 +6,7 @@ import Bootstrap.spark
 import conf.{ALSDefaultConf, RecommenderDataPaths}
 import models.{SongDTO, User}
 import utils.Common.timeTrack
-import utils.box.BoxSupport
+import utils.box.{Box, BoxSupport}
 
 import akka.actor.{Actor, ActorContext, ActorLogging, ActorRef, PoisonPill, Props}
 import org.apache.spark.mllib.recommendation.MatrixFactorizationModel
@@ -25,6 +25,7 @@ class ContextManagerActor extends Actor with ActorLogging with BoxSupport {
   import ContextManagerActor.Messages._
   import ContextManagerActor.Responses._
   import ContextManagerActor._
+  import ContextManagerActor.Responses.SuccessfulUpdateOnModel._
 
   log.info("scheduler is starting to work")
   context.system.scheduler.scheduleAtFixedRate(
@@ -46,19 +47,18 @@ class ContextManagerActor extends Actor with ActorLogging with BoxSupport {
         }
       }
 
-      modelBox.peek { model =>
+      modelBox peek { model =>
         context.become(receiveWithLatestModel(model))
         performanceEvaluator.evaluateUsingAllMethodsDispatched(model)
+      } ifFailed { _ =>
+        log.warning("could not find latest model")
+        newSlave ! UpdateModel
       }
-        .ifFailed { _ =>
-          log.warning("could not find latest model")
-          newSlave ! UpdateModel
-        }
 
     case GetLatestModel =>
       sender() ! toBox(Option.empty[MatrixFactorizationModel])
 
-    case SuccessfulUpdateOnModel(model) =>
+    case UpdateSuccessful(model) =>
       context.become(receiveWithLatestModel(model))
       sender() ! PoisonPill
       newSlave ! Save(model)
@@ -98,10 +98,10 @@ class ContextManagerActor extends Actor with ActorLogging with BoxSupport {
     case GetLatestModel =>
       sender() ! toBox(Option.apply[MatrixFactorizationModel](model))
 
-    case SuccessfulUpdateOnModel(model) =>
+    case UpdateSuccessful(model) =>
       context.become(receiveWithLatestModel(model))
-      newSlave ! Save(model)
       sender() ! PoisonPill
+      newSlave ! Save(model)
 
     /*
     *    Data append messages
@@ -176,6 +176,13 @@ object ContextManagerActor {
     sealed trait CMOperationResult // ContextManagerOperationResult
 
     case class SuccessfulUpdateOnModel(model: MatrixFactorizationModel)
+
+    object SuccessfulUpdateOnModel {
+      object UpdateSuccessful {
+        def unapply(value: Box[SuccessfulUpdateOnModel]): Option[MatrixFactorizationModel] =
+          value.toOption.map(_.model)
+      }
+    }
 
     case class OperationFailure(throwable: Throwable) extends CMOperationResult
 
