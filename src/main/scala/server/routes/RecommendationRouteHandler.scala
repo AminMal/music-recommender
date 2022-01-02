@@ -3,7 +3,7 @@ package server.routes
 
 import service.algebra.RecommendationServiceAlgebra
 import utils.ApplicationJsonSupport
-import utils.box.BoxSupport
+import utils.box.{BoxSupport, BoxToResponseSupport}
 
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
@@ -17,20 +17,14 @@ import scala.concurrent.ExecutionContext
  */
 class RecommendationRouteHandler(
                                   recommendationService: RecommendationServiceAlgebra
-                                )(implicit ec: ExecutionContext) extends BoxSupport {
-
-  import RecommendationRouteHandler._
+                                )(implicit ec: ExecutionContext) extends BoxToResponseSupport {
 
   val route: Route = path("recommend" / IntNumber) { userId =>
     parameter("count".as[Int].withDefault(6)) { count =>
-      val result = recommendationService.getRecommendations(userId, count)
 
-      onSuccess(result.toScommenderResponse) { res =>
-        complete(status = res.status, res)
-      }
+      recommendationService.getRecommendations(userId, count)
+
     }
   }
 
 }
-
-object RecommendationRouteHandler extends ApplicationJsonSupport

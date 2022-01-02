@@ -3,7 +3,7 @@ package server.routes
 
 import service.algebra.ApplicationStatusServiceAlgebra
 import utils.ApplicationJsonSupport
-import utils.box.BoxSupport
+import utils.box.{BoxSupport, BoxToResponseSupport}
 
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
@@ -18,19 +18,12 @@ import scala.concurrent.ExecutionContext
  */
 class ApplicationStatusRouteHandler(applicationService: ApplicationStatusServiceAlgebra)(
   implicit ec: ExecutionContext
-) extends BoxSupport {
-
-  import ApplicationStatusRouteHandler._
+) extends BoxToResponseSupport {
 
   val route: Route = path("health") {
     get {
-      val result = applicationService.health()
-      onSuccess(result.toScommenderResponse) { res =>
-        complete(res.status, res)
-      }
+      applicationService.health()
     }
   }
 
 }
-
-object ApplicationStatusRouteHandler extends ApplicationJsonSupport

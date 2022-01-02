@@ -6,7 +6,7 @@ import models.responses.{FailureResponse, ResponseMessage, ScommenderResponse, S
 import models.{SongDTO, User}
 import service.algebra.ContextManagerServiceAlgebra
 import utils.ApplicationJsonSupport
-import utils.box.BoxSupport
+import utils.box.{BoxSupport, BoxToResponseSupport}
 
 import akka.Done
 import akka.http.scaladsl.model.StatusCodes
@@ -23,31 +23,30 @@ import scala.concurrent.ExecutionContext
  */
 class ApplicationContextRouteHandler(
                                       contextManagerService: ContextManagerServiceAlgebra
-                                    )(implicit ec: ExecutionContext) extends BoxSupport with ApplicationJsonSupport {
+                                    )(implicit ec: ExecutionContext) extends BoxToResponseSupport {
 
   val routes: Route = path("rating") {
     post {
       entity(as[AddUserRating]) { ratingRequest =>
 
-        val managerResponse = contextManagerService.addUserRating(ratingRequest)
-        onSuccess(managerResponse.toScommenderResponse)(completeScommenderResult)
+        contextManagerService.addUserRating(ratingRequest)
 
       }
     }
   } ~ path("user") {
     post {
       entity(as[User]) { user =>
-        val managerResponse = contextManagerService.addUser(user)
 
-        onSuccess(managerResponse.toScommenderResponse)(completeScommenderResult)
+        contextManagerService.addUser(user)
+
       }
     }
   } ~ path("song") {
     post {
       entity(as[SongDTO]) { song =>
-        val managerResponse = contextManagerService.addSong(song)
 
-        onSuccess(managerResponse.toScommenderResponse)(completeScommenderResult)
+        contextManagerService.addSong(song)
+
       }
     }
   } ~ path("force-update") {
@@ -58,18 +57,6 @@ class ApplicationContextRouteHandler(
         SuccessResponse.forMessage("update request sent successfully")
       )
     }
-  }
-
-  private def completeScommenderResult(result: ScommenderResponse[Done]): Route = result match {
-    case failed@FailureResponse(_, _) =>
-      complete(failed.status, failed)
-    case success@SuccessResponse(_, _) =>
-      complete(
-        status = success.status,
-        SuccessResponse.forMessage(
-          ResponseMessage.ObjectWriteSuccessful
-        )
-      )
   }
 
 }
