@@ -9,7 +9,7 @@ import org.apache.spark.mllib.recommendation.Rating
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.{DataFrame, Row}
 import utils.box.{BoxF, BoxSupport}
-import utils.Common._
+import utils.TimeUtils._
 
 import java.time.temporal.ChronoUnit
 import scala.concurrent.{ExecutionContext, Future}
@@ -18,7 +18,9 @@ import scala.concurrent.{ExecutionContext, Future}
 /**
  * Singleton object that has methods to read all domain dataframes
  */
-object DataFrames extends BoxSupport {
+object DataFrames {
+
+  import BoxSupport._
 
   /** reads training data dataframe.
    *

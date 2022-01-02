@@ -26,7 +26,7 @@ import scala.util.{Failure, Success, Try}
 private[controllers] class ContextManagerSlaveActor extends Actor with ActorLogging with BoxSupport {
 
   import Bootstrap.spark
-  import utils.Common.timeTrack
+  import utils.TimeUtils.timeTrack
 
   import ContextManagerActor.Responses._
   import ContextManagerSlaveActor._
