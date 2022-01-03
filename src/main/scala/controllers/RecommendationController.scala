@@ -22,7 +22,7 @@ import java.time.temporal.ChronoUnit
  */
 class RecommendationController(resultParser: ResultParser) extends Actor with ActorLogging with BoxSupport {
 
-  import utils.Common.timeTrack
+  import utils.TimeUtils.timeTrack
 
   import RecommendationController.Messages._
 

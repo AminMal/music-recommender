@@ -6,6 +6,8 @@ import exception.ScommenderException
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.ExceptionHandler
 
+import scala.util.control.NonFatal
+
 
 /**
  * Singleton object that contains exception handler directive

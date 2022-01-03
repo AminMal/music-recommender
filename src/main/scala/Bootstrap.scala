@@ -9,18 +9,20 @@ import com.typesafe.config.{Config, ConfigFactory}
 import org.apache.log4j.{Level, Logger}
 import org.apache.spark.sql.SparkSession
 
+
 object Bootstrap {
+  val appConfig: Config = ConfigFactory.load()
+  val sparkThreads: Int = appConfig.getInt("scommender.spark.num-threads")
+
   final val spark = SparkSession
     .builder()
     .appName("scommender")
-    .config("spark.master", "local[4]") // todo, this needs to be removed in production
+    .config("spark.master", s"local[$sparkThreads]") // todo, this needs to be removed in production
     .getOrCreate()
 
   Logger.getLogger("org").setLevel(Level.ERROR)
-  val appConfig: Config = ConfigFactory.load()
 
   import utils.SparkFunctions._
-
   spark.udf.register("geterr", getError)
   spark.udf.register("getstate", getState)
   spark.udf.register("fMeasure", fMeasure)

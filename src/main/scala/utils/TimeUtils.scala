@@ -9,7 +9,7 @@ import scala.concurrent.{ExecutionContext, Future}
 /**
  * Common utility object for all the packages.
  */
-object Common {
+object TimeUtils {
 
   private def now(): LocalTime = LocalTime.now()
 

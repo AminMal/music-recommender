@@ -8,6 +8,7 @@ import utils.{ApplicationJsonSupport, DataFrames}
 
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
+import exception.NotImplementedYet
 
 import scala.concurrent.ExecutionContext
 
@@ -49,6 +50,12 @@ class PerformanceEvaluatorRouteHandler(
 
             case MetricsEnum.FMeasure =>
               new FMeasureEvaluation(ratings, testData, threshold)
+
+            case notImplementedMetric =>
+              throw NotImplementedYet(
+                entityKey = "evaluation metric",
+                entityValue = notImplementedMetric.toString
+              )
           }
           val result = performanceEvaluatorService.evaluateDefaultModel(method)
 

@@ -58,7 +58,7 @@ trait ApplicationJsonSupport extends SprayJsonSupport with JsonSnakecaseFormatSu
     }
   }
 
-  implicit def scommenderResponseWriter[T: ClassTag](
+  implicit def scommenderResponseWriter[T](
                                                       implicit formatter: RootJsonWriter[T]
                                                     ): RootJsonWriter[ScommenderResponse[T]] = {
     case result: SuccessResponse[T] => successResponseFormatter(formatter).write(result)

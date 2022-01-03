@@ -5,7 +5,7 @@ import Bootstrap.services.{performanceEvaluatorService => performanceEvaluator}
 import Bootstrap.spark
 import conf.{ALSDefaultConf, RecommenderDataPaths}
 import models.{SongDTO, User}
-import utils.Common.timeTrack
+import utils.TimeUtils.timeTrack
 import utils.box.{Box, BoxSupport}
 
 import akka.actor.{Actor, ActorContext, ActorLogging, ActorRef, PoisonPill, Props}

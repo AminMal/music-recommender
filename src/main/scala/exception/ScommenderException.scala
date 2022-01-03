@@ -4,9 +4,8 @@ package exception
 import models.responses.{ErrorBody, FailureResponse}
 
 import akka.http.scaladsl.model.StatusCode
-import scommender.utils.box.Box
+import utils.box.Box
 
-import scala.util.Try
 import scala.util.control.NonFatal
 
 
