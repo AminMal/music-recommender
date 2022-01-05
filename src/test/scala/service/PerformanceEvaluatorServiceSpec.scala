@@ -3,9 +3,9 @@ package service
 
 import conf.ALSDefaultConf
 import evaluation.{FMeasureEvaluation, PrecisionRecallEvaluator, RmseEvaluation, ShuffledEvaluation}
-import utils.{ALSBuilder, DataFrames}
-
+import utils.{ALSBuilder, DataFrameProvider}
 import utils.box.{BoxF, BoxSupport}
+
 import org.apache.spark.mllib.recommendation.MatrixFactorizationModel
 import org.scalatest.Matchers
 
@@ -15,13 +15,15 @@ class PerformanceEvaluatorServiceSpec extends BoxFWordSpecLike with Matchers wit
   import provider._
 
   private val newModel: BoxF[MatrixFactorizationModel] = {
-    DataFrames
+    dataframeProvider
       .trainRddBoxF
       .map(ratings => ALSBuilder.forConfig(ALSDefaultConf).run(ratings))
   }
 
+  val dataframeProvider: DataFrameProvider = mock[DataFrameProvider]
+
   private val shuffledMethod = new ShuffledEvaluation(
-    DataFrames.ratingsDF, DataFrames.testDataDF
+    dataframeProvider.ratingsDF, dataframeProvider.testDataDF
   )
 
   private val precisionRecallEvaluator = PrecisionRecallEvaluator.fromShuffled(shuffledMethod, 0.65)

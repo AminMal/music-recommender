@@ -10,6 +10,7 @@ import utils.box.{Box, BoxSupport}
 
 import akka.actor.{Actor, ActorContext, ActorLogging, ActorRef, PoisonPill, Props}
 import org.apache.spark.mllib.recommendation.MatrixFactorizationModel
+import scommender.utils.DataFrameProvider
 
 import java.time.temporal.ChronoUnit
 import scala.concurrent.duration.Duration
@@ -20,17 +21,24 @@ import scala.concurrent.duration.Duration
  * Matrix factorization model, managing slaves in order to create models, add data (users, songs, ratings).
  * There is only one reference of this actor available and created throughout the application.
  */
-class ContextManagerActor extends Actor with ActorLogging with BoxSupport {
+class ContextManagerActor(
+                         dataframeProducer: () => DataFrameProvider
+                         ) extends Actor with ActorLogging with BoxSupport {
 
   import ContextManagerActor.Messages._
   import ContextManagerActor.Responses._
-  import ContextManagerActor._
   import ContextManagerActor.Responses.SuccessfulUpdateOnModel._
 
   log.info("scheduler is starting to work")
   context.system.scheduler.scheduleAtFixedRate(
     initialDelay = Duration.Zero, interval = ALSDefaultConf.updateInterval
   )(() => self ! UpdateModel)(context.dispatcher)
+
+
+  private def newSlave(): ActorRef = context.actorOf(Props(
+    new ContextManagerSlaveActor(dataframeProducer.apply())
+  ))
+
 
   override def receive: Receive = initialReceive
 
@@ -51,7 +59,7 @@ class ContextManagerActor extends Actor with ActorLogging with BoxSupport {
         context.become(receiveWithLatestModel(model))
         performanceEvaluator.evaluateUsingAllMethodsDispatched(model)
       } ifFailed { _ =>
-        log.warning("could not find latest model")
+        log.info("could not find latest model")
         newSlave ! UpdateModel
       }
 
@@ -136,9 +144,7 @@ object ContextManagerActor {
    *
    * @return Props of this actor.
    */
-  def props: Props = Props(new ContextManagerActor)
-
-  private def newSlave(implicit context: ActorContext): ActorRef = context.actorOf(Props[ContextManagerSlaveActor])
+  def props(dataframeProducer: () => DataFrameProvider): Props = Props(new ContextManagerActor(dataframeProducer))
 
   /**
    * Messages that this actor accepts.

@@ -6,8 +6,7 @@ import conf.{RecommenderDataPaths => Paths}
 import controllers.ContextManagerActor.Messages._
 import controllers.ContextManagerActor.Responses._
 import models.{SongDTO, User}
-import utils.ALSBuilder
-import utils.DataFrames.trainRddBoxF
+import utils.{ALSBuilder, DataFrameProvider}
 import utils.box.BoxSupport
 
 import akka.actor.{Actor, ActorLogging, ActorRef}
@@ -23,14 +22,16 @@ import scala.util.{Failure, Success, Try}
  * wants to do. for each command, a new reference is created as a child of context manager actor
  * and gets killed right after the work is done.
  */
-private[controllers] class ContextManagerSlaveActor extends Actor with ActorLogging with BoxSupport {
+private[controllers] class ContextManagerSlaveActor(
+                                                   dataFrameProvider: DataFrameProvider
+                                                   ) extends Actor with ActorLogging with BoxSupport {
 
   import Bootstrap.spark
   import utils.TimeUtils.timeTrack
-
   import ContextManagerActor.Responses._
   import ContextManagerSlaveActor._
   import spark.implicits._
+
 
   override def postStop(): Unit =
     log.info(s"(${self.path.name}) got poison pill from parent")
@@ -71,7 +72,7 @@ private[controllers] class ContextManagerSlaveActor extends Actor with ActorLogg
 
       val modelBoxF = for {
         config <- toBoxF(configService.getLatestConfig)
-        ratings <- trainRddBoxF
+        ratings <- dataFrameProvider.trainRddBoxF
       } yield {
         log.info(s"updating model for config: $config")
         timeTrack(operationName = Some("creating als model"), ChronoUnit.MILLIS) {

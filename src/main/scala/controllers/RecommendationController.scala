@@ -5,7 +5,7 @@ import controllers.RecommendationController.defaultTrendingSongs
 import exception.EntityNotFoundException
 import models.{RecommendationResult, SongDTO}
 import utils.box.BoxSupport
-import utils.{ResultParser, ResultParserImpl}
+import utils.{DataFrameProvider, ResultParser, ResultParserImpl}
 
 import akka.actor.{Actor, ActorLogging, PoisonPill, Props}
 import org.apache.spark.mllib.recommendation.MatrixFactorizationModel
@@ -20,16 +20,11 @@ import java.time.temporal.ChronoUnit
  *
  * @param resultParser an implementation of result parser to fetch user and song data from DataFrames
  */
-class RecommendationController(resultParser: ResultParser) extends Actor with ActorLogging with BoxSupport {
+private[controllers] class RecommendationController(resultParser: ResultParser) extends Actor with ActorLogging with BoxSupport {
 
   import utils.TimeUtils.timeTrack
-
   import RecommendationController.Messages._
 
-  val defaultResult: Int => RecommendationResult = userId =>
-    new RecommendationResult(
-      userId = userId, songs = defaultTrendingSongs
-    )
 
   override def receive: Receive = initialReceive
 
@@ -94,7 +89,8 @@ object RecommendationController {
    *
    * @return props for this actor
    */
-  def props: Props = Props(new RecommendationController(new ResultParserImpl()))
+  def props(dataFrameProvider: DataFrameProvider): Props =
+    Props(new RecommendationController(new ResultParserImpl(dataFrameProvider)))
 
   /**
    * Messages that this actor accepts.

@@ -8,6 +8,7 @@ import akka.stream.Materializer
 import com.typesafe.config.{Config, ConfigFactory}
 import org.apache.log4j.{Level, Logger}
 import org.apache.spark.sql.SparkSession
+import utils.DataFrameProvider
 
 
 object Bootstrap {
@@ -35,8 +36,10 @@ object Bootstrap {
   implicit val actorSystem: ActorSystem = ActorSystem("scommender")
   implicit val materializer: Materializer = Materializer.matFromSystem
 
-  import HttpServer.timeout
-  val services: ServiceModule = ServiceModule.forSystem(actorSystem)
+  val dataframeProducer: () => DataFrameProvider = DataFrameProvider.producer(spark)
 
-  val routes: RoutesModule = new RoutesModule(services)(ActorSystem("route-handler"))
+  import HttpServer.timeout
+  val services: ServiceModule = ServiceModule.forSystem(actorSystem, dataframeProducer)
+
+  val routes: RoutesModule = new RoutesModule(services, dataframeProducer.apply())(ActorSystem("route-handler"))
 }

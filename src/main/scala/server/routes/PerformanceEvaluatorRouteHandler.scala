@@ -4,7 +4,7 @@ package server.routes
 import evaluation._
 import service.algebra.PerformanceEvaluatorServiceAlgebra
 import utils.box.BoxSupport
-import utils.{ApplicationJsonSupport, DataFrames}
+import utils.{ApplicationJsonSupport, DataFrameProvider}
 
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
@@ -19,7 +19,8 @@ import scala.concurrent.ExecutionContext
  * @param performanceEvaluatorService performance evaluator service
  */
 class PerformanceEvaluatorRouteHandler(
-                                        performanceEvaluatorService: PerformanceEvaluatorServiceAlgebra
+                                        performanceEvaluatorService: PerformanceEvaluatorServiceAlgebra,
+                                        dataFrameProvider: DataFrameProvider
                                       )(implicit ec: ExecutionContext) extends BoxSupport {
 
   import utils.Matchers._
@@ -30,8 +31,8 @@ class PerformanceEvaluatorRouteHandler(
     path("evaluate" / EvaluationMethod) { extractedMethod =>
       get {
 
-        val ratings = DataFrames.ratingsDF
-        val testData = DataFrames.testDataDF
+        val ratings = dataFrameProvider.ratingsDF
+        val testData = dataFrameProvider.testDataDF
         import Bootstrap.spark
 
         parameters(
@@ -43,7 +44,7 @@ class PerformanceEvaluatorRouteHandler(
               new RmseEvaluation(ratings, testData)
 
             case MetricsEnum.Shuffled =>
-              new ShuffledEvaluation(DataFrames.ratingsDF, DataFrames.testDataDF)
+              new ShuffledEvaluation(ratings, testData)
 
             case MetricsEnum.PrecisionRecall =>
               new PrecisionRecallEvaluator(ratings, testData, threshold)
