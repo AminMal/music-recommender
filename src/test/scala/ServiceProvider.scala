@@ -12,6 +12,8 @@ import utils.box.{Box, BoxF}
 import org.mockito.ArgumentMatchers.any
 import org.scalatestplus.mockito.MockitoSugar
 import org.mockito.Mockito._
+import scommender.utils.DataFrameProvider
+
 import scala.concurrent.Future
 
 
@@ -20,7 +22,9 @@ class ServiceProvider(systemName: String) extends MockitoSugar {
   implicit val actorSystem: ActorSystem = ActorSystem(systemName)
   val mat: Materializer = Materializer.matFromSystem
 
-  val service: ServiceModule = spy(ServiceModule.forSystem(actorSystem)(HttpServer.timeout))
+  val dataframeProducer = DataFrameProvider.producer(Bootstrap.spark)
+
+  val service: ServiceModule = spy(ServiceModule.forSystem(actorSystem, dataframeProducer)(HttpServer.timeout))
 
   private val defaultResult: BoxF[Done] = new BoxF[Done](Box(Future.successful(Done)))(service.system.dispatcher)
 

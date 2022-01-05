@@ -1,32 +1,25 @@
 package scommender
 package utils
 
-import Bootstrap.spark
-import conf.{RecommenderDataPaths => Paths}
 import utils.DataFrameSchemas._
+import utils.box.{BoxF, BoxSupport}
+import conf.{RecommenderDataPaths => Paths}
 
 import org.apache.spark.mllib.recommendation.Rating
 import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.{DataFrame, Row}
-import utils.box.{BoxF, BoxSupport}
-import utils.TimeUtils._
+import org.apache.spark.sql.{DataFrame, Row, SparkSession}
 
-import java.time.temporal.ChronoUnit
 import scala.concurrent.{ExecutionContext, Future}
 
 
-/**
- * Singleton object that has methods to read all domain dataframes
- */
-object DataFrames {
+class DataFrameProvider(sparkSession: SparkSession) { self: BoxSupport =>
 
-  import BoxSupport._
 
   /** reads training data dataframe.
    *
    * @return training dataframe
    */
-  def trainingDF: DataFrame = spark.read
+  def trainingDF: DataFrame = sparkSession.read
     .schema(ratingsStruct)
     .parquet(Paths.trainPath)
 
@@ -34,7 +27,7 @@ object DataFrames {
    *
    * @return rating dataframe
    */
-  def ratingsDF: DataFrame = spark.read
+  def ratingsDF: DataFrame = sparkSession.read
     .schema(ratingsStruct)
     .parquet(Paths.ratingsPath)
 
@@ -42,7 +35,7 @@ object DataFrames {
    *
    * @return songs dataframe
    */
-  def songsDF: DataFrame = spark.read
+  def songsDF: DataFrame = sparkSession.read
     .schema(songsStruct)
     .parquet(Paths.songsPath)
 
@@ -50,7 +43,7 @@ object DataFrames {
    *
    * @return users dataframe
    */
-  def usersDF: DataFrame = spark.read
+  def usersDF: DataFrame = sparkSession.read
     .schema(usersSchema)
     .parquet(Paths.usersPath)
 
@@ -58,7 +51,7 @@ object DataFrames {
    *
    * @return test dataframe
    */
-  def testDataDF: DataFrame = spark.read
+  def testDataDF: DataFrame = sparkSession.read
     .schema(testStruct)
     .parquet(Paths.testPath)
 
@@ -74,7 +67,7 @@ object DataFrames {
         product = songId,
         rating = target
       )
-  }
+    }
 
   /** reads training dataframe, and converts it to BoxF instance of training data RDD.
    *
@@ -83,26 +76,31 @@ object DataFrames {
    */
   def trainRddBoxF(implicit ec: ExecutionContext): BoxF[RDD[Rating]] = {
     toBoxF {
-      timeTrackFuture(operationName = Some("loading training rdd"), ChronoUnit.MILLIS) {
-        Future.successful {
-          spark.sparkContext.parallelize(trainingDF.collect().map(rowToRating))
-        }
+      Future.successful {
+        sparkSession.sparkContext.parallelize(trainingDF.collect().map(rowToRating))
       }
     }
   }
 
   /** reads rating dataframe, and converts it to BoxF instance of rating data RDD.
    *
-   * @param ec execution context to perform timetracking
+   * @param ec execution context to perform time tracking
    * @return rating data rdd
    */
   def ratingRddBoxF(implicit ec: ExecutionContext): BoxF[RDD[Rating]] =
     toBoxF {
-      timeTrackFuture(operationName = Some("loading ratings rdd"), ChronoUnit.MILLIS) {
-        Future.successful {
-          spark.sparkContext
-            .parallelize(ratingsDF.collect().map(rowToRating))
-        }
+      Future.successful {
+        sparkSession.sparkContext
+          .parallelize(ratingsDF.collect().map(rowToRating))
       }
     }
+
+}
+
+object DataFrameProvider {
+  def apply(sparkSession: SparkSession): DataFrameProvider =
+    new DataFrameProvider(sparkSession) with BoxSupport
+
+  def producer(sparkSession: SparkSession): () => DataFrameProvider =
+    () => apply(sparkSession)
 }

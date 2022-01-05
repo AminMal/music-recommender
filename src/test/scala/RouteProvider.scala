@@ -4,7 +4,7 @@ import server.RoutesModule
 
 import akka.http.scaladsl.testkit.{RouteTestTimeout, ScalatestRouteTest}
 import akka.http.scaladsl.server._
-import utils.ApplicationJsonSupport
+import utils.{ApplicationJsonSupport, DataFrameProvider}
 
 import akka.actor.ActorSystem
 import org.scalatest.{Matchers, WordSpecLike}
@@ -17,7 +17,7 @@ class RouteProvider(systemName: String) extends ServiceProvider(systemName) with
   with Matchers
   with ScalatestRouteTest with ApplicationJsonSupport {
 
-  val provider = new RoutesModule(service)(ActorSystem("route-provider-system"))
+  val provider = new RoutesModule(service, dataframeProducer.apply())(ActorSystem("route-provider-system"))
 
   implicit val routeTestTimeout: RouteTestTimeout = new RouteTestTimeout(FiniteDuration(60, TimeUnit.SECONDS))
   implicit val tildeArrowInjection: TildeArrow[RequestContext, Future[RouteResult]] {

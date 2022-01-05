@@ -3,7 +3,7 @@ package controllers
 
 import evaluation.EvaluationMode.EvaluationMode
 import evaluation._
-import utils.DataFrames
+import utils.DataFrameProvider
 import utils.box.BoxSupport
 
 import akka.actor.{Actor, ActorLogging, PoisonPill, Props}
@@ -12,7 +12,9 @@ import org.apache.spark.mllib.recommendation.MatrixFactorizationModel
 /**
  * This actor takes the responsibility of evaluating models based on whatever evaluation method that is requested.
  */
-class PerformanceEvaluatorActor extends Actor with ActorLogging with BoxSupport {
+class PerformanceEvaluatorActor(
+                               dataFrameProvider: DataFrameProvider
+                               ) extends Actor with ActorLogging with BoxSupport {
 
   import PerformanceEvaluatorActor.Messages._
 
@@ -20,8 +22,8 @@ class PerformanceEvaluatorActor extends Actor with ActorLogging with BoxSupport 
 
     case EvaluateUsingAllMethods(model, mode) =>
 
-      val ratings = DataFrames.ratingsDF
-      val testData = DataFrames.testDataDF
+      val ratings = dataFrameProvider.ratingsDF
+      val testData = dataFrameProvider.testDataDF
 
       val shuffledEvaluator = new ShuffledEvaluation(
         ratings, testData
@@ -71,7 +73,7 @@ object PerformanceEvaluatorActor {
    *
    * @return props of this actor
    */
-  def props: Props = Props[PerformanceEvaluatorActor]
+  def props(dataFrameProvider: DataFrameProvider): Props = Props(new PerformanceEvaluatorActor(dataFrameProvider))
 
   /**
    * Messages that this actor accepts

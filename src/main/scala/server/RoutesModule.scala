@@ -7,6 +7,7 @@ import service.ServiceModule
 import akka.actor.ActorSystem
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
+import utils.DataFrameProvider
 
 
 /**
@@ -14,28 +15,32 @@ import akka.http.scaladsl.server.Route
  *
  * @param services an instance of service module
  */
-class RoutesModule(services: ServiceModule)(implicit routeHandlerSystem: ActorSystem) {
+class RoutesModule(
+                    services: ServiceModule,
+                    dataframeProvider: DataFrameProvider
+                  )(implicit routeHandlerSystem: ActorSystem) {
 
   import routeHandlerSystem.dispatcher
 
-  val applicationRouteHandler = new ApplicationStatusRouteHandler(
+  private val applicationRouteHandler = new ApplicationStatusRouteHandler(
     services.applicationStatusService
   )
 
-  val contextRouteHandler = new ApplicationContextRouteHandler(
+  private val contextRouteHandler = new ApplicationContextRouteHandler(
     services.contextManagerService
   )
 
-  val configurationsRouteHandler = new ConfigurationsRouteHandler(
+  private val configurationsRouteHandler = new ConfigurationsRouteHandler(
     services.configurationManagementService
   )
 
-  val recommendationsRouteHandler = new RecommendationRouteHandler(
+  private val recommendationsRouteHandler = new RecommendationRouteHandler(
     services.recommendationManagerService
   )
 
-  val performanceRouteHandler = new PerformanceEvaluatorRouteHandler(
-    services.performanceEvaluatorService
+  private val performanceRouteHandler = new PerformanceEvaluatorRouteHandler(
+    services.performanceEvaluatorService,
+    dataframeProvider
   )
 
   val routes: Route = {

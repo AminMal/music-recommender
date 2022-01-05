@@ -5,17 +5,20 @@ import controllers.RecommendationController.Messages.UpdateContext
 import utils.box.BoxSupport
 
 import akka.actor.{Actor, ActorRef, Props}
+import utils.DataFrameProvider
 
 
 /**
  * This actor controls recommendation requests and slave actors.
  */
-class RecommenderManagerActor extends Actor with BoxSupport {
+class RecommenderManagerActor(
+                             dataFrameProducer: () => DataFrameProvider
+                             ) extends Actor with BoxSupport {
 
   import Bootstrap.services.contextManagerService
   import controllers.RecommenderManagerActor.Messages._
-
   import context.dispatcher
+
 
   def receive: Receive = {
     case NewRecommenderActor =>
@@ -30,7 +33,7 @@ class RecommenderManagerActor extends Actor with BoxSupport {
 
   }
 
-  def newRecommender(): ActorRef = context.actorOf(RecommendationController.props)
+  def newRecommender(): ActorRef = context.actorOf(RecommendationController.props(dataFrameProducer.apply()))
 
 }
 
@@ -41,7 +44,7 @@ object RecommenderManagerActor {
    *
    * @return props for this actor
    */
-  def props: Props = Props(new RecommenderManagerActor)
+  def props(dataFrameProducer: () => DataFrameProvider): Props = Props(new RecommenderManagerActor(dataFrameProducer))
 
   /**
    * Messages that this actor supports
