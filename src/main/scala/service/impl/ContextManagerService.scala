@@ -2,7 +2,6 @@ package scommender
 package service.impl
 
 import controllers.ContextManagerActor.Messages._
-import controllers.ContextManagerActor.Responses._
 import models.{SongDTO, User}
 import service.algebra.ContextManagerServiceAlgebra
 import utils.box.{BoxF, BoxSupport}
@@ -11,8 +10,8 @@ import akka.Done
 import akka.actor.ActorRef
 import akka.util.Timeout
 import org.apache.spark.mllib.recommendation.MatrixFactorizationModel
-
 import scala.concurrent.ExecutionContext
+
 
 class ContextManagerService(contextManagerActor: ActorRef)(
   implicit timeout: Timeout,
@@ -29,18 +28,18 @@ class ContextManagerService(contextManagerActor: ActorRef)(
 
   override def addUserRating(userId: Long, songId: Long, rating: Double): BoxF[Done] = {
     val request = AddUserRating(userId, songId, rating)
-    (contextManagerActor ??[CMOperationResult] request).map(_ => Done)
+    contextManagerActor ??[Done] request
   }
 
   override def addUserRating(request: AddUserRating): BoxF[Done] = {
-    (contextManagerActor ??[CMOperationResult] request).map(_ => Done)
+    contextManagerActor ??[Done] request
   }
 
   override def addUser(user: User): BoxF[Done] = {
-    (contextManagerActor ??[CMOperationResult] AddUser(user)).map(_ => Done)
+    contextManagerActor ??[Done] AddUser(user)
   }
 
   override def addSong(song: SongDTO): BoxF[Done] = {
-    (contextManagerActor ??[CMOperationResult] AddSong(song)).map(_ => Done)
+    contextManagerActor ??[Done] AddSong(song)
   }
 }

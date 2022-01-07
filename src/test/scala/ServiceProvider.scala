@@ -12,7 +12,7 @@ import utils.box.{Box, BoxF}
 import org.mockito.ArgumentMatchers.any
 import org.scalatestplus.mockito.MockitoSugar
 import org.mockito.Mockito._
-import scommender.utils.DataFrameProvider
+import utils.DataFrameProvider
 
 import scala.concurrent.Future
 

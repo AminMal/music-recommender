@@ -4,9 +4,11 @@ package controllers
 import akka.actor.{ActorRef, ActorSystem, Props}
 import models.{SongDTO, User}
 
+import akka.Done
 import akka.testkit.{ImplicitSender, TestKit}
 import org.apache.spark.mllib.recommendation.MatrixFactorizationModel
 import org.scalatest.{BeforeAndAfterAll, Matchers, WordSpecLike}
+import utils.box.Box
 
 class ContextManagerActorSpec extends TestKit(ActorSystem("context-manager"))
   with ImplicitSender
@@ -41,17 +43,17 @@ class ContextManagerActorSpec extends TestKit(ActorSystem("context-manager"))
 
     "add user to spark users df" in {
       contextManagerActor ! AddUser(mockUser)
-      expectMsgType[CMOperationResult]
+      expectMsgType[Box[Done]]
     }
 
     "add song to spark songs df" in {
       contextManagerActor ! AddSong(mockSong)
-      expectMsgType[CMOperationResult]
+      expectMsgType[Box[Done]]
     }
 
     "add user rating in spark ratings df" in {
       contextManagerActor ! AddUserRating(mockUser.userId.toLong, mockSong.id, 1D)
-      expectMsgType[CMOperationResult]
+      expectMsgType[Box[Done]]
     }
   }
 }

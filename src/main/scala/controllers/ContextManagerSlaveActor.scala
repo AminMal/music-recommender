@@ -4,12 +4,12 @@ package controllers
 import Bootstrap.services.{configurationManagementService => configService}
 import conf.{RecommenderDataPaths => Paths}
 import controllers.ContextManagerActor.Messages._
-import controllers.ContextManagerActor.Responses._
 import models.{SongDTO, User}
 import utils.{ALSBuilder, DataFrameProvider}
-import utils.box.BoxSupport
+import utils.box._
 
-import akka.actor.{Actor, ActorLogging, ActorRef}
+import akka.Done
+import akka.actor.{Actor, ActorLogging, PoisonPill}
 import org.apache.spark.sql.SaveMode
 
 import java.io.File
@@ -32,40 +32,46 @@ private[controllers] class ContextManagerSlaveActor(
   import ContextManagerSlaveActor._
   import spark.implicits._
 
+  override def preStart(): Unit = {
+    log.info("context manager slave started")
+  }
 
   override def postStop(): Unit =
-    log.info(s"(${self.path.name}) got poison pill from parent")
+    log.info("context manager slave died")
 
   def receive: Receive = {
-    case AddDataRequestWithSender(request, replyTo) =>
-      request match {
-        case req: AddUserRating =>
-          handleDFAppend {
-            (req :: Nil).toDF(AddUserRating.dfColNames: _*)
-              .write
-              .mode(SaveMode.Append)
-              .parquet(path = Paths.ratingsPath)
-          }(parent = sender(), replyTo = replyTo)
-        case req: AddUser =>
-          /* user validations should be done on another service */
-          val newUserDF = (req.user :: Nil)
-            .toDF(User.dfColNames: _*)
-
-          handleDFAppend {
-            newUserDF.write
-              .mode(SaveMode.Append)
-              .parquet(path = Paths.usersPath)
-          }(parent = sender(), replyTo = replyTo)
-        case req: AddSong =>
-          val newSongDF = (req.song :: Nil)
-            .toDF(SongDTO.dfColNames: _*)
-
-          handleDFAppend {
-            newSongDF.write
-              .mode(SaveMode.Append)
-              .parquet(path = Paths.songsPath)
-          }(parent = sender(), replyTo = replyTo)
+    case request: AddUserRating =>
+      val writeResult: Box[Done] = controlDFAppend {
+        (request :: Nil).toDF(AddUserRating.dfColNames: _*)
+          .write
+          .mode(SaveMode.Append)
+          .parquet(path = Paths.ratingsPath)
       }
+
+      sender() ! writeResult
+      self ! PoisonPill
+
+    case request: AddUser =>
+      val writeResult: Box[Done] = controlDFAppend {
+        (request.user :: Nil).toDF(User.dfColNames: _*)
+          .write
+          .mode(SaveMode.Append)
+          .parquet(path = Paths.usersPath)
+      }
+
+      sender() ! writeResult
+      self ! PoisonPill
+
+    case request: AddSong =>
+      val writeResult: Box[Done] = controlDFAppend {
+        (request.song :: Nil).toDF(SongDTO.dfColNames: _*)
+          .write
+          .mode(SaveMode.Append)
+          .parquet(path = Paths.songsPath)
+      }
+
+      sender() ! writeResult
+      self ! PoisonPill
 
     case UpdateModel =>
       import context.dispatcher
@@ -75,7 +81,7 @@ private[controllers] class ContextManagerSlaveActor(
         ratings <- dataFrameProvider.trainRddBoxF
       } yield {
         log.info(s"updating model for config: $config")
-        timeTrack(operationName = Some("creating als model"), ChronoUnit.MILLIS) {
+        timeTrack(operationName = "creating als model", ChronoUnit.MILLIS) {
           ALSBuilder.forConfig(config).run(ratings)
         }
       }
@@ -84,8 +90,8 @@ private[controllers] class ContextManagerSlaveActor(
         .pipeTo(sender)
 
     case Save(model) =>
-      timeTrack(operationName = Some("saving latest recommender"), ChronoUnit.MILLIS) {
-        Try {
+      timeTrack(operationName = "saving latest recommender", ChronoUnit.MILLIS) {
+        Box {
           new File(Paths.latestModelPath).delete()
           log.info("deleted latest model")
           model.save(spark.sparkContext, Paths.latestModelPath)
@@ -93,22 +99,17 @@ private[controllers] class ContextManagerSlaveActor(
         }
       }
 
-      sender() ! SuccessfulOperation
-
-
   }
 
 }
 
 object ContextManagerSlaveActor {
-  private def handleDFAppend(code: => Unit)(parent: ActorRef, replyTo: ActorRef): Unit =
+
+  private def controlDFAppend(code: => Unit): Box[Done] =
     Try(code) match {
       case Failure(exception) =>
-        parent ! OperationBindResult(
-          OperationFailure(exception),
-          replyTo
-        )
+        Failed[Done](exception)
       case Success(_) =>
-        parent ! OperationBindResult(SuccessfulOperation, replyTo)
+        Successful[Done](Done)
     }
 }
