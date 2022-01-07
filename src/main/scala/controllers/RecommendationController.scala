@@ -46,7 +46,7 @@ private[controllers] class RecommendationController(resultParser: ResultParser) 
 
       val recommendationResult = for {
         user <- toBox {
-          timeTrack(operationName = Some("Get user info"), ChronoUnit.MILLIS) {
+          timeTrack(operationName = "Get user info", ChronoUnit.MILLIS) {
             resultParser.getUserInfo(userId)
               .getOrElse(throw EntityNotFoundException(entity = "user", id = Some(userId.toString)))
           }
@@ -54,14 +54,14 @@ private[controllers] class RecommendationController(resultParser: ResultParser) 
         _ = log.info(s"Found user: $user")
 
         recommendations <- toBox {
-          timeTrack(operationName = Some("Getting recommendations from model"), ChronoUnit.MILLIS) {
+          timeTrack(operationName = "Getting recommendations from model", ChronoUnit.MILLIS) {
             model.recommendProducts(userId, count)
           }
         }
         _ = log.info(s"Got ratings: ${recommendations.toSeq}")
 
         songs <- toBox {
-          timeTrack(operationName = Some("Getting song info from recommendation result"), ChronoUnit.MILLIS) {
+          timeTrack(operationName = "Getting song info from recommendation result", ChronoUnit.MILLIS) {
             resultParser.getSongDTOs(recommendations)
           }
         }
