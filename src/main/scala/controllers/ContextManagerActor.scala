@@ -8,9 +8,9 @@ import models.{SongDTO, User}
 import utils.TimeUtils.timeTrack
 import utils.box.{Box, BoxSupport}
 
-import akka.actor.{Actor, ActorContext, ActorLogging, ActorRef, PoisonPill, Props}
+import akka.actor.{Actor, ActorLogging, ActorRef, PoisonPill, Props}
 import org.apache.spark.mllib.recommendation.MatrixFactorizationModel
-import scommender.utils.DataFrameProvider
+import utils.DataFrameProvider
 
 import java.time.temporal.ChronoUnit
 import scala.concurrent.duration.Duration
@@ -26,10 +26,8 @@ class ContextManagerActor(
                          ) extends Actor with ActorLogging with BoxSupport {
 
   import ContextManagerActor.Messages._
-  import ContextManagerActor.Responses._
   import ContextManagerActor.Responses.SuccessfulUpdateOnModel._
 
-  log.info("scheduler is starting to work")
   context.system.scheduler.scheduleAtFixedRate(
     initialDelay = Duration.Zero, interval = ALSDefaultConf.updateInterval
   )(() => self ! UpdateModel)(context.dispatcher)
@@ -49,7 +47,7 @@ class ContextManagerActor(
     case UpdateModel =>
       log.info(s"updating model started on context manager actor: ${self.path}")
       val modelBox = toBox {
-        timeTrack(operationName = Some("loading latest model"), ChronoUnit.MILLIS) {
+        timeTrack(operationName = "loading latest model", ChronoUnit.MILLIS) {
           MatrixFactorizationModel
             .load(spark.sparkContext, RecommenderDataPaths.latestModelPath)
         }
@@ -76,23 +74,13 @@ class ContextManagerActor(
     *   Data append messages
     * */
     case request: AddUserRating =>
-      newSlave ! AddDataRequestWithSender(request, sender())
+      newSlave forward request
 
     case request: AddUser =>
-      newSlave ! AddDataRequestWithSender(request, sender())
+      newSlave forward request
 
     case request: AddSong =>
-      newSlave ! AddDataRequestWithSender(request, sender())
-
-    /*
-    *   Slave messages
-    * */
-    case OperationBindResult(result, replyTo) =>
-      replyTo ! toBox(result)
-      sender() /* slave */ ! PoisonPill
-
-    case _: CMOperationResult =>
-      sender() ! PoisonPill
+      newSlave forward request
   }
 
   def receiveWithLatestModel(model: MatrixFactorizationModel): Receive = {
@@ -116,24 +104,13 @@ class ContextManagerActor(
     * */
 
     case request: AddUserRating =>
-      newSlave ! AddDataRequestWithSender(request, sender())
+      newSlave forward request
 
     case request: AddUser =>
-      newSlave ! AddDataRequestWithSender(request, sender())
+      newSlave forward request
 
     case request: AddSong =>
-      newSlave ! AddDataRequestWithSender(request, sender())
-
-    /*
-    *   Slave messages
-    * */
-
-    case OperationBindResult(result, replyTo) =>
-      replyTo ! toBox(result)
-      sender() /* slave */ ! PoisonPill
-
-    case _: CMOperationResult =>
-      sender() ! PoisonPill
+      newSlave forward request
   }
 }
 
@@ -151,8 +128,6 @@ object ContextManagerActor {
    */
   object Messages {
     sealed trait AddDataRequest
-
-    case class AddDataRequestWithSender(request: AddDataRequest, replyTo: ActorRef)
 
     case class AddUserRating(
                               userId: Long,
@@ -179,8 +154,6 @@ object ContextManagerActor {
    * Responses that this actor generates.
    */
   object Responses {
-    sealed trait CMOperationResult // ContextManagerOperationResult
-
     case class SuccessfulUpdateOnModel(model: MatrixFactorizationModel)
 
     object SuccessfulUpdateOnModel {
@@ -189,11 +162,5 @@ object ContextManagerActor {
           value.toOption.map(_.model)
       }
     }
-
-    case class OperationFailure(throwable: Throwable) extends CMOperationResult
-
-    case class OperationBindResult(result: CMOperationResult, replyTo: ActorRef)
-
-    case object SuccessfulOperation extends CMOperationResult
   }
 }

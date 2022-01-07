@@ -2,11 +2,12 @@ package scommender
 package controllers
 
 import akka.actor.{ActorRef, ActorSystem, Props}
-import controllers.ContextManagerActor.Responses.CMOperationResult
 import models.{SongDTO, User}
 
+import akka.Done
 import akka.testkit.{ImplicitSender, TestKit}
 import org.scalatest.{BeforeAndAfterAll, Matchers, WordSpecLike}
+import utils.box.Box
 
 class ContextManagerSlaveActorSpec extends TestKit(ActorSystem("context-manager-slave"))
   with ImplicitSender
@@ -37,12 +38,12 @@ class ContextManagerSlaveActorSpec extends TestKit(ActorSystem("context-manager-
   "a context manager slave actor" should {
     "append user to spark users df" in {
       newSlave() ! (AddUser(mockUser) -> contextManagerMock)
-      expectMsgType[CMOperationResult]
+      expectMsgType[Box[Done]]
     }
 
     "append song to spark songs df" in {
       newSlave() ! (AddSong(mockSong) -> contextManagerMock)
-      expectMsgType[CMOperationResult]
+      expectMsgType[Box[Done]]
     }
 
     "append rating in spark ratings df" in {
@@ -51,7 +52,7 @@ class ContextManagerSlaveActorSpec extends TestKit(ActorSystem("context-manager-
         songId = mockSong.id,
         rating = 1D
       ) -> contextManagerMock)
-      expectMsgType[CMOperationResult]
+      expectMsgType[Box[Done]]
     }
   }
 }
