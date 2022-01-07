@@ -24,7 +24,7 @@ object TimeUtils {
    *     openFile(filePath).readLines
    *   }
    *
-   *   val fileContents = timeTrack(operationName = Some("reading file contents"), ChronoUnit.MILLIS) {
+   *   val fileContents = timeTrack(operationName = "reading file contents", ChronoUnit.MILLIS) {
    *     readFile(filePath)
    *   }
    *
@@ -37,12 +37,12 @@ object TimeUtils {
    * @tparam V Type of the code expression
    * @return value of running the code
    */
-  def timeTrack[V](operationName: Option[String] = None, timeUnit: ChronoUnit = SECONDS)(code: => V): V = {
+  def timeTrack[V](operationName: String, timeUnit: ChronoUnit = SECONDS)(code: => V): V = {
     val start = now()
     val result = code
     val finish = now()
     logJob(
-      name = operationName.getOrElse("<Not Available>"),
+      name = operationName,
       timeUnit = timeUnit,
       length = timeUnit.between(start, finish)
     )
@@ -54,7 +54,7 @@ object TimeUtils {
    * {{{
    *   def futureString: Future[String] = Future.successful("some string created in future")
    *
-   *   timeTrackFuture(operationName = Some("creating string in future")) (futureString)
+   *   timeTrackFuture(operationName = "creating string in future") (futureString)
    *
    *   Console> Finished creating string in future, operation took 2 Millis.
    * }}}
@@ -67,14 +67,14 @@ object TimeUtils {
    * @return result of code execution
    */
   def timeTrackFuture[V](
-                          operationName: Option[String],
+                          operationName: String,
                           timeUnit: ChronoUnit = MILLIS
                         )(code: => Future[V])(implicit ec: ExecutionContext): Future[V] = {
     val start = now()
     code.andThen { _ =>
       val finish = now()
       logJob(
-        operationName.getOrElse("<Not Available>"),
+        operationName,
         timeUnit = timeUnit,
         length = timeUnit.between(start, finish)
       )
