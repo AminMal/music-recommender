@@ -15,6 +15,8 @@ import org.apache.spark.sql.SaveMode
 import java.io.File
 import java.time.temporal.ChronoUnit
 import scala.util.{Failure, Success, Try}
+import utils.TimeUtils.timeTrack
+import Bootstrap.spark
 
 
 /**
@@ -26,18 +28,10 @@ private[controllers] class ContextManagerSlaveActor(
                                                    dataFrameProvider: DataFrameProvider
                                                    ) extends Actor with ActorLogging with BoxSupport {
 
-  import Bootstrap.spark
-  import utils.TimeUtils.timeTrack
   import ContextManagerActor.Responses._
   import ContextManagerSlaveActor._
   import spark.implicits._
 
-  override def preStart(): Unit = {
-    log.info("context manager slave started")
-  }
-
-  override def postStop(): Unit =
-    log.info("context manager slave died")
 
   def receive: Receive = {
     case request: AddUserRating =>

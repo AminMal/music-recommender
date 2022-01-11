@@ -23,8 +23,4 @@ object SongDTO {
     artistName = row.getAs[String]("artist_name"),
     language = row.getAs[Double]("language")
   )
-
-  def mock(id: Long, name: String, artistName: String): SongDTO = SongDTO(
-    id, name, 0, "", artistName, -0.1
-  )
 }

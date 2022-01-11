@@ -52,6 +52,8 @@ class BoxF[+T](val underlying: Box[Future[T]])(implicit ec: ExecutionContext) ex
   def filter(predicate: T => Boolean): BoxF[T] =
     new BoxF[T](underlying.map(_.filter(predicate)))
 
+  def withFilter(predicate: T => Boolean): BoxF[T] = filter(predicate)
+
   /** performs given side effect function on the value
    *
    * @see [[utils.box.Box.foreach]]
