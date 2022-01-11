@@ -16,6 +16,8 @@ import scala.util.control.NonFatal
  */
 sealed trait Box[+T] {
 
+  def withFilter(predicate: T => Boolean): Box[T] = filter(predicate)
+
   /** map the value inside the box (if is successful) using the given function.
    *
    * @param f function to convert the value inside

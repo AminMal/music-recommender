@@ -1,10 +1,9 @@
 package scommender
 package controllers
 
-import controllers.RecommendationController.defaultTrendingSongs
-import exception.EntityNotFoundException
-import models.{RecommendationResult, SongDTO}
-import utils.box.BoxSupport
+import exception.{EntityNotFoundException, ModelNotTrainedYetException}
+import models.RecommendationResult
+import utils.box.{BoxSupport, Failed}
 import utils.{DataFrameProvider, ResultParser, ResultParserImpl}
 
 import akka.actor.{Actor, ActorLogging, PoisonPill, Props}
@@ -33,11 +32,8 @@ private[controllers] class RecommendationController(resultParser: ResultParser) 
       context.become(receiveWithModel(model))
       log.info(s"update factorization model in recommender actor")
 
-    case GetRecommendations(userId, count) =>
-      sender() ! toBox(new RecommendationResult(
-        userId = userId,
-        songs = defaultTrendingSongs.take(count)
-      ))
+    case GetRecommendations(_, _) =>
+      sender() ! Failed[RecommendationResult](ModelNotTrainedYetException)
       self ! PoisonPill
   }
 
@@ -74,15 +70,6 @@ private[controllers] class RecommendationController(resultParser: ResultParser) 
 }
 
 object RecommendationController {
-
-  val defaultTrendingSongs: Seq[SongDTO] = Seq(
-    SongDTO.mock(id = 125323L, name = "Coloratura", artistName = "Coldplay"),
-    SongDTO.mock(id = 321534L, name = "Do I wanna know?", artistName = "Arctic monkeys"),
-    SongDTO.mock(id = 413416L, name = "Love and hate", artistName = "Michael Kiwanuka"),
-    SongDTO.mock(id = 782351L, name = "Riders on the storm", artistName = "The doors"),
-    SongDTO.mock(id = 213632L, name = "Lucky town", artistName = "Bruce Springsteen"),
-    SongDTO.mock(id = 783294L, name = "Paragon", artistName = "Soen")
-  )
 
   /**
    * Generates recommendation controller actor Props in order to create new reference of this actor.
