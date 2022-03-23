@@ -10,6 +10,8 @@ import org.apache.log4j.{Level, Logger}
 import org.apache.spark.sql.SparkSession
 import utils.DataFrameProvider
 
+import scala.concurrent.ExecutionContext
+
 
 object Bootstrap {
   val appConfig: Config = ConfigFactory.load()
@@ -20,7 +22,7 @@ object Bootstrap {
   final val spark = SparkSession
     .builder()
     .appName("scommender")
-    .config("spark.master", s"local[$sparkThreads]") // todo, this needs to be removed in production
+    .config("spark.master", s"local[6]") // todo, this needs to be removed in production
     .getOrCreate()
 
 
@@ -43,4 +45,6 @@ object Bootstrap {
   val services: ServiceModule = ServiceModule.forSystem(actorSystem, dataframeProducer)
 
   val routes: RoutesModule = new RoutesModule(services, dataframeProducer.apply())(ActorSystem("route-handler"))
+
+  Runtime.getRuntime.addShutdownHook(new Thread(() => spark.stop()))
 }

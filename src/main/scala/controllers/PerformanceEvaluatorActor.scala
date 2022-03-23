@@ -8,6 +8,10 @@ import utils.box.BoxSupport
 
 import akka.actor.{Actor, ActorLogging, PoisonPill, Props}
 import org.apache.spark.mllib.recommendation.MatrixFactorizationModel
+import org.apache.spark.sql.DataFrame
+import models.ModelPerformanceResult
+
+import service.DiagnosticsService
 
 /**
  * This actor takes the responsibility of evaluating models based on whatever evaluation method that is requested.
@@ -17,6 +21,18 @@ class PerformanceEvaluatorActor(
                                ) extends Actor with ActorLogging with BoxSupport {
 
   import PerformanceEvaluatorActor.Messages._
+
+  private def parseEvaluationResult(results: Seq[DataFrame]): ModelPerformanceResult = {
+    val rmseResult: DataFrame = results(1)
+    val precisionAndRecallResult = results(2)
+    val fmeasureResult = results(3)
+    ModelPerformanceResult(
+      precision = BigDecimal(precisionAndRecallResult.head().getAs[Double]("precision")),
+      recall = BigDecimal(precisionAndRecallResult.head().getAs[Double]("recall")),
+      fmeasure = BigDecimal(fmeasureResult.head().getAs[Double]("fMeasure")),
+      rmse = BigDecimal(rmseResult.head().getAs[Double]("rmse"))
+    )
+  }
 
   def receive: Receive = {
 
@@ -37,18 +53,20 @@ class PerformanceEvaluatorActor(
         shuffledEvaluator, rmseEvaluator, precisionAndRecallEvaluator, fMeasureEvaluator
       )
 
+      val methodsAndEvaluationResults = evaluationMethods.map(method => (method, method.evaluate(model)))
       mode match {
-        case EvaluationMode.FireAndForget =>
-          evaluationMethods.foreach { method =>
-            println(s"results for metrics: ${method.metric.toString} is:")
-            println("----------------------------------------------------")
-            method.evaluate(model).show(100)
+        case scommender.evaluation.EvaluationMode.FireAndForget =>
+          methodsAndEvaluationResults foreach {
+            case (method, evaluationResult) =>
+              println(s"results for metrics: ${method.metric.toString} is:")
+              println("----------------------------------------------------")
+              evaluationResult.show(100)
           }
-
-        case EvaluationMode.Wait =>
-          val evaluationDataFrames = toBox(evaluationMethods.map(_.evaluate(model)))
-          sender() ! evaluationDataFrames
+        case scommender.evaluation.EvaluationMode.Wait =>
+          sender() ! toBox(methodsAndEvaluationResults.map(_._2))
       }
+      val performanceResult = parseEvaluationResult(methodsAndEvaluationResults.map(_._2))
+      DiagnosticsService.updateSessionPerformanceResultsForReport(model, performanceResult)
       self ! PoisonPill
 
 

@@ -3,19 +3,24 @@ package controllers
 
 import Bootstrap.services.{performanceEvaluatorService => performanceEvaluator}
 import Bootstrap.{appConfig, spark}
-import conf.{ALSDefaultConf, RecommenderDataPaths}
+import conf.RecommenderDataPaths
 import models.{SongDTO, User}
-import utils.TimeUtils.timeTrack
-import utils.box.{Box, BoxSupport}
+import utils.TimeUtils.timeTrackReturningDuration
+import utils.box.{Box, BoxSupport, Failed}
 
 import akka.actor.{Actor, ActorLogging, ActorRef, PoisonPill, Props}
 import org.apache.spark.mllib.recommendation.MatrixFactorizationModel
 import utils.DataFrameProvider
 
 import org.apache.hadoop.mapred.InvalidInputException
+import exception.ModelNotTrainedYetException
 
+import service.DiagnosticsService
+
+import java.io.File
 import java.time.temporal.ChronoUnit
-import scala.concurrent.duration.Duration
+import java.util.concurrent.TimeUnit
+import scala.concurrent.duration.{Duration, FiniteDuration}
 
 
 /**
@@ -29,9 +34,10 @@ class ContextManagerActor(
 
   import ContextManagerActor.Messages._
   import ContextManagerActor.Responses.SuccessfulUpdateOnModel._
+  import ContextManagerActor._
 
   context.system.scheduler.scheduleAtFixedRate(
-    initialDelay = Duration.Zero, interval = ALSDefaultConf.updateInterval
+    initialDelay = Duration.Zero, interval = ContextManagerActor.overridingInterval
   )(() => self ! UpdateModel)(context.dispatcher)
 
 
@@ -39,93 +45,92 @@ class ContextManagerActor(
     new ContextManagerSlaveActor(dataframeProducer.apply())
   ))
 
+  private def updateModel(): Unit = newSlave ! UpdateModel
 
-  override def receive: Receive = initialReceive
+  private def dataAppendReceive(): Receive = {
+    case request: AddUserRating =>
+      newSlave forward request
 
-  def initialReceive: Receive = {
-    /*
-    *    Matrix model messages
-    * */
+    case request: AddUser =>
+      newSlave forward request
+
+    case request: AddSong =>
+      newSlave forward request
+  }
+
+  private def getReceive(modelOpt: Option[MatrixFactorizationModel]): Receive =
+    dataAppendReceive() orElse modelOpt.map(contextReceiveWithModel).getOrElse(contextReceiveWithoutModel)
+
+  override def receive: Receive = getReceive(modelOpt = None)
+
+  def contextReceiveWithoutModel: Receive = {
     case UpdateModel =>
-      log.info(s"updating model started on context manager actor: ${self.path}")
-      if (appConfig.getBoolean("scommender.cache-matrix")) {
-        val cachedModelBox = toBox {
-          timeTrack(operationName = "loading latest model", ChronoUnit.MILLIS) {
+      log.info(s"updating model started on context manager actor")
+      if (cacheMatrixModel) {
+        val cachedModel = if (new File(RecommenderDataPaths.latestModelPath).exists()) toBox {
+          val (model, duration) = timeTrackReturningDuration(operationName = "loading latest model", ChronoUnit.MILLIS) {
             MatrixFactorizationModel
               .load(spark.sparkContext, RecommenderDataPaths.latestModelPath)
           }
+          DiagnosticsService.updateModelLoadingTimeReport(model, duration)
+          model
+        } else {
+          Failed[MatrixFactorizationModel](ModelNotTrainedYetException)
         }
-        cachedModelBox peek { model =>
-          context.become(receiveWithLatestModel(model))
-          if (appConfig.getBoolean("scommender.performance-test-on-startup")) {
+
+        cachedModel peek { model =>
+          context become getReceive(Some(model))
+          if (performanceTestOnReload) {
             performanceEvaluator.evaluateUsingAllMethodsDispatched(model)
           }
         } ifFailed {
-          case se if se.isOfType[InvalidInputException] => // is an IOException, since no latest model was persisted before
-            newSlave ! UpdateModel
-          case other =>
-            log.error(other, "could not load latest model")
+          case se if se.is[InvalidInputException] => // is an hadoop IOException, since no latest model was persisted before
+            updateModel()
         }
-      } else newSlave ! UpdateModel
+
+      } else updateModel()
 
     case GetLatestModel =>
       sender() ! toBox(Option.empty[MatrixFactorizationModel])
 
     case UpdateSuccessful(model) =>
-      context.become(receiveWithLatestModel(model))
+      context become getReceive(Some(model))
       sender() ! PoisonPill
-      if (appConfig.getBoolean("scommender.cache-matrix")) {
+      if (cacheMatrixModel) {
         newSlave ! Save(model)
       }
-      performanceEvaluator.evaluateUsingAllMethodsDispatched(model)
-
-    /*
-    *   Data append messages
-    * */
-    case request: AddUserRating =>
-      newSlave forward request
-
-    case request: AddUser =>
-      newSlave forward request
-
-    case request: AddSong =>
-      newSlave forward request
+      if (performanceTestOnReload)
+        performanceEvaluator.evaluateUsingAllMethodsDispatched(model)
   }
 
-  def receiveWithLatestModel(model: MatrixFactorizationModel): Receive = {
-    /*
-    *    Matrix model messages
-    * */
+  def contextReceiveWithModel(model: MatrixFactorizationModel): Receive = {
     case UpdateModel =>
-      log.info(s"updating model started on context manager actor: ${self.path}")
-      newSlave ! UpdateModel
+      log.info(s"updating model started on context manager actor")
+      updateModel()
 
     case GetLatestModel =>
       sender() ! toBox(Option.apply[MatrixFactorizationModel](model))
 
     case UpdateSuccessful(model) =>
-      context.become(receiveWithLatestModel(model))
+      context become getReceive(Some(model))
       sender() ! PoisonPill
-      if (appConfig.getBoolean("scommender.cache-matrix")) {
+      if (cacheMatrixModel) {
         newSlave ! Save(model)
       }
-
-    /*
-    *    Data append messages
-    * */
-
-    case request: AddUserRating =>
-      newSlave forward request
-
-    case request: AddUser =>
-      newSlave forward request
-
-    case request: AddSong =>
-      newSlave forward request
+      if (performanceTestOnReload) {
+        performanceEvaluator.evaluateUsingAllMethodsDispatched(model)
+      }
   }
 }
 
 object ContextManagerActor {
+
+  private final val performanceTestOnReload = appConfig.getBoolean("scommender.performance-test-on-reload")
+  private final val cacheMatrixModel = appConfig.getBoolean("scommender.cache-matrix")
+  private def overridingInterval: FiniteDuration = FiniteDuration(
+    length = appConfig.getInt("scommender.update-interval.value"),
+    unit = TimeUnit.valueOf(appConfig.getString("scommender.update-interval.time-unit"))
+  )
 
   /**
    * Generates context manager actor Props in order to create new reference of this actor.

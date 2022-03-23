@@ -2,12 +2,12 @@ package scommender
 package server.routes
 
 import service.algebra.ApplicationStatusServiceAlgebra
-import utils.ApplicationJsonSupport
-import utils.box.{BoxSupport, BoxToResponseSupport}
+import utils.box.BoxToResponseSupport
 
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
-
+import exception.EntityNotFoundException
+import models.responses.SuccessResponse
 import scala.concurrent.ExecutionContext
 
 
@@ -23,6 +23,26 @@ class ApplicationStatusRouteHandler(applicationService: ApplicationStatusService
   val route: Route = path("health") {
     get {
       applicationService.health()
+    }
+  } ~ path("diagnostics" / Segment) { session =>
+    get {
+      val reportQueryResult = applicationService.getReport(session)
+      onSuccess(reportQueryResult) { reportOpt =>
+        val report = reportOpt
+          .getOrElse(
+            throw EntityNotFoundException(
+              "report", Some(session)
+            )
+          )
+        complete(SuccessResponse(data = report))
+      }
+    }
+  } ~ path("diagnostics") {
+    get {
+      val reportsFuture = applicationService.getReports
+      onSuccess(reportsFuture) { reports =>
+        complete(SuccessResponse(data = reports.toSeq))
+      }
     }
   }
 

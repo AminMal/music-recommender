@@ -23,7 +23,7 @@ trait ScommenderException extends Throwable {
 
   def getOriginal: Option[Throwable] = None
 
-  def isOfType[T : ClassTag]: Boolean = false
+  def is[T : ClassTag]: Boolean = false
 }
 
 final class AdoptedScommenderException(cause: Throwable, statusCode: Int = 500) extends ScommenderException {
@@ -38,7 +38,7 @@ final class AdoptedScommenderException(cause: Throwable, statusCode: Int = 500) 
 
   override def getOriginal: Option[Throwable] = Some(cause)
 
-  override def isOfType[T: ClassTag]: Boolean = cause.isInstanceOf[T]
+  override def is[T: ClassTag]: Boolean = cause.isInstanceOf[T]
 }
 
 object ScommenderException {

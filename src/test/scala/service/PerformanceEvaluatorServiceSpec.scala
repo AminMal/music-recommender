@@ -1,7 +1,7 @@
 package scommender
 package service
 
-import conf.ALSDefaultConf
+import conf.ALSConfig
 import evaluation.{FMeasureEvaluation, PrecisionRecallEvaluator, RmseEvaluation, ShuffledEvaluation}
 import utils.{ALSBuilder, DataFrameProvider}
 import utils.box.{BoxF, BoxSupport}
@@ -14,13 +14,13 @@ class PerformanceEvaluatorServiceSpec extends BoxFWordSpecLike with Matchers wit
   val provider = new ServiceProvider("performance-service")
   import provider._
 
+  val dataframeProvider: DataFrameProvider = mock[DataFrameProvider]
+
   private val newModel: BoxF[MatrixFactorizationModel] = {
     dataframeProvider
       .trainRddBoxF
-      .map(ratings => ALSBuilder.forConfig(ALSDefaultConf).run(ratings))
+      .map(ratings => ALSBuilder.forConfig(ALSConfig.fromConfigPath("scommender.als-config")).run(ratings))
   }
-
-  val dataframeProvider: DataFrameProvider = mock[DataFrameProvider]
 
   private val shuffledMethod = new ShuffledEvaluation(
     dataframeProvider.ratingsDF, dataframeProvider.testDataDF

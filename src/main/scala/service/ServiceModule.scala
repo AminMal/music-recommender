@@ -22,7 +22,7 @@ sealed class ServiceModule(
 
   lazy val applicationStatusService: ApplicationStatusServiceAlgebra =
     new ApplicationStatusService(
-      system.actorOf(ApplicationStatusController.props)
+      system.actorOf(ApplicationStatusController.props, name = ApplicationStatusController.name)
     )
 
 

@@ -8,6 +8,7 @@ import utils.{DataFrameProvider, ResultParser, ResultParserImpl}
 
 import akka.actor.{Actor, ActorLogging, PoisonPill, Props}
 import org.apache.spark.mllib.recommendation.MatrixFactorizationModel
+import service.DiagnosticsService
 
 import java.time.temporal.ChronoUnit
 
@@ -30,7 +31,6 @@ private[controllers] class RecommendationController(resultParser: ResultParser) 
   def initialReceive: Receive = {
     case UpdateContext(model) =>
       context.become(receiveWithModel(model))
-      log.info(s"update factorization model in recommender actor")
 
     case GetRecommendations(_, _) =>
       sender() ! Failed[RecommendationResult](ModelNotTrainedYetException)
@@ -41,27 +41,28 @@ private[controllers] class RecommendationController(resultParser: ResultParser) 
     case GetRecommendations(userId, count) =>
 
       val recommendationResult = for {
-        user <- toBox {
+        _ <- toBox {
           timeTrack(operationName = "Get user info", ChronoUnit.MILLIS) {
             resultParser.getUserInfo(userId)
               .getOrElse(throw EntityNotFoundException(entity = "user", id = Some(userId.toString)))
           }
         }
-        _ = log.info(s"Found user: $user")
 
         recommendations <- toBox {
           timeTrack(operationName = "Getting recommendations from model", ChronoUnit.MILLIS) {
             model.recommendProducts(userId, count)
           }
         }
-        _ = log.info(s"Got ratings: ${recommendations.toSeq}")
 
         songs <- toBox {
           timeTrack(operationName = "Getting song info from recommendation result", ChronoUnit.MILLIS) {
             resultParser.getSongDTOs(recommendations)
           }
         }
-      } yield new RecommendationResult(userId = userId, songs = songs.take(count))
+      } yield {
+        DiagnosticsService.incrementModelServedRequestsForReport(model)
+        new RecommendationResult(userId = userId, songs = songs.take(count))
+      }
 
       sender() ! recommendationResult
       self ! PoisonPill
