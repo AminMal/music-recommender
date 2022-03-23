@@ -1,6 +1,10 @@
 package scommender
 package conf
 
+import com.typesafe.config.Config
+import Bootstrap.appConfig
+import scala.util.Try
+
 /**
  * Configuration class in order to create MatrixFactorizationModel more easily
  *
@@ -21,3 +25,16 @@ case class ALSConfig(
                       seed: Long = System.nanoTime(),
                       implicitPreferences: Boolean = false
                     )
+
+object ALSConfig {
+  def fromConfig(config: Config): ALSConfig = apply(
+    rank = config.getInt("rank"),
+    iterations = config.getInt("iterations"),
+    lambda = Try(config.getDouble("lambda")).getOrElse(0.01D),
+    alpha = Try(config.getDouble("alpha")).getOrElse(1.0D),
+    block = Try(config.getInt("block")).getOrElse(-1),
+    implicitPreferences = Try(config.getBoolean("implicit-prefs")).getOrElse(false)
+  )
+
+  def fromConfigPath(path: String): ALSConfig = fromConfig(appConfig.getConfig(path))
+}

@@ -12,7 +12,6 @@ class ApplicationStatusServiceSpec extends BoxFWordSpecLike with Matchers {
   "application status service" should {
     "return success" inBox {
       service.applicationStatusService.health().map { response =>
-        println(s"response is $response")
         assert(response.isInstanceOf[HealthCheckResponse])
       }
     }

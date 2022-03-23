@@ -1,7 +1,7 @@
 package scommender
 package controllers
 
-import conf.{ALSConfig, ALSDefaultConf}
+import conf.ALSConfig
 
 import akka.actor.{Actor, ActorLogging, Props}
 
@@ -16,7 +16,7 @@ class ConfigManagerActor extends Actor with ActorLogging {
   import ConfigManagerActor.Messages._
   import ConfigManagerActor.Response._
 
-  def receive: Receive = receiveWithConf(ALSDefaultConf)
+  def receive: Receive = receiveWithConf(ALSConfig.fromConfigPath("scommender.als-config"))
 
   def receiveWithConf(configurations: ALSConfig): Receive = {
     case UpdateConfig(conf, force) =>

@@ -49,36 +49,17 @@ object TimeUtils {
     result
   }
 
-  /** evaluate the given future code, printing the time it took to evaluate the code
-   *
-   * {{{
-   *   def futureString: Future[String] = Future.successful("some string created in future")
-   *
-   *   timeTrackFuture(operationName = "creating string in future") (futureString)
-   *
-   *   Console> Finished creating string in future, operation took 2 Millis.
-   * }}}
-   *
-   * @param operationName name of the operation, for better tracking in console.
-   * @param timeUnit time unit for operation
-   * @param code the input future code to track
-   * @param ec execution context to perform andThen function
-   * @tparam V value inside future
-   * @return result of code execution
-   */
-  def timeTrackFuture[V](
-                          operationName: String,
-                          timeUnit: ChronoUnit = MILLIS
-                        )(code: => Future[V])(implicit ec: ExecutionContext): Future[V] = {
+  def timeTrackReturningDuration[V](operationName: String, timeUnit: ChronoUnit = MILLIS)(code: => V): (V, Long) = {
     val start = now()
-    code.andThen { _ =>
-      val finish = now()
-      logJob(
-        operationName,
-        timeUnit = timeUnit,
-        length = timeUnit.between(start, finish)
-      )
-    }
+    val result = code
+    val finish = now()
+    val length = timeUnit.between(start, finish)
+    logJob(
+      name = operationName,
+      timeUnit = timeUnit,
+      length = length
+    )
+    result -> length
   }
 
 }

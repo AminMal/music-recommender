@@ -11,19 +11,21 @@ import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
 import org.apache.spark.sql.DataFrame
 import spray.json._
 
-import scala.reflect.ClassTag
-
 
 /**
  * This trait holds all the json formatters for models used in domain.
  */
-trait ApplicationJsonSupport extends SprayJsonSupport with JsonSnakecaseFormatSupport {
+trait ApplicationJsonSupport extends SprayJsonSupport with JsonSnakecaseFormatSupport with DateTimeFormatSupport {
 
   implicit val modelActivationResponseFormatter: RootJsonFormat[ModelActivationResponse] = jsonFormat1(ModelActivationResponse)
   implicit val healthCheckResponseFormatter: RootJsonFormat[HealthCheckResponse] = jsonFormat2(HealthCheckResponse)
   implicit val metaFormatter: RootJsonFormat[Meta] = jsonFormat1(Meta.apply)
   implicit val songDTOFormatter: RootJsonFormat[SongDTO] = jsonFormat6(SongDTO.apply)
   implicit val recommendationResultFormatter: RootJsonFormat[RecommendationResult] = jsonFormat3(RecommendationResult)
+  implicit val alsConfigFormatter: RootJsonFormat[ALSConfig] = jsonFormat7(ALSConfig)
+  implicit val diagnosticsPerformanceFormatter: RootJsonFormat[ModelPerformanceResult] = jsonFormat4(ModelPerformanceResult)
+  implicit val diagnosticReportFormatter: RootJsonFormat[DiagnosticsReport] =
+    jsonFormat8(DiagnosticsReport)
 
   implicit def successResponseFormatter[D](
                                             implicit dataWriter: RootJsonWriter[D]
@@ -47,7 +49,6 @@ trait ApplicationJsonSupport extends SprayJsonSupport with JsonSnakecaseFormatSu
   implicit val addUserRatingFormatter: RootJsonFormat[AddUserRating] = jsonFormat3(AddUserRating.apply)
   implicit val messageFormatter: RootJsonFormat[ResponseMessage] = jsonFormat1(ResponseMessage.apply)
   implicit val addUserFormat: RootJsonFormat[User] = jsonFormat3(User.apply)
-  implicit val alsConfigFormatter: RootJsonFormat[ALSConfig] = jsonFormat7(ALSConfig)
 
   implicit val dfJsonFormatter: RootJsonWriter[DataFrame] = df => {
     val jsonArray = df.toJSON
