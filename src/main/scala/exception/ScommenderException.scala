@@ -6,6 +6,7 @@ import models.responses.{ErrorBody, FailureResponse}
 import akka.http.scaladsl.model.StatusCode
 import utils.box.Box
 
+import scala.reflect.ClassTag
 import scala.util.control.NonFatal
 
 
@@ -17,6 +18,27 @@ trait ScommenderException extends Throwable {
   def toResponseBody: FailureResponse
 
   def status: StatusCode
+
+  def isAdopted: Boolean = false
+
+  def getOriginal: Option[Throwable] = None
+
+  def isOfType[T : ClassTag]: Boolean = false
+}
+
+final class AdoptedScommenderException(cause: Throwable, statusCode: Int = 500) extends ScommenderException {
+  override def toResponseBody: FailureResponse =
+    FailureResponse(
+      error = ErrorBody(code = statusCode, message = Box(cause.getMessage.take(100)).toOption)
+    )
+
+  override def status: StatusCode = StatusCode.int2StatusCode(statusCode)
+
+  override def isAdopted: Boolean = true
+
+  override def getOriginal: Option[Throwable] = Some(cause)
+
+  override def isOfType[T: ClassTag]: Boolean = cause.isInstanceOf[T]
 }
 
 object ScommenderException {
@@ -29,13 +51,12 @@ object ScommenderException {
   def adopt(throwable: Throwable): ScommenderException = throwable match {
     case se: ScommenderException => se
     case NonFatal(other) =>
-      new ScommenderException {
-        override def toResponseBody: FailureResponse =
-          FailureResponse(
-            error = ErrorBody(code = 500, message = Box(other.getMessage.take(100)).toOption)
-          )
+      new AdoptedScommenderException(other)
+  }
 
-        override def status: StatusCode = 500
-      }
+  def adopt(throwable: Throwable, status: Int): ScommenderException = throwable match {
+    case se: ScommenderException => se
+    case NonFatal(other) =>
+      new AdoptedScommenderException(other, status)
   }
 }

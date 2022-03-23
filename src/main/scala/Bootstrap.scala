@@ -15,13 +15,14 @@ object Bootstrap {
   val appConfig: Config = ConfigFactory.load()
   val sparkThreads: Int = appConfig.getInt("scommender.spark.num-threads")
 
+  Logger.getLogger("org").setLevel(Level.ERROR)
+
   final val spark = SparkSession
     .builder()
     .appName("scommender")
     .config("spark.master", s"local[$sparkThreads]") // todo, this needs to be removed in production
     .getOrCreate()
 
-  Logger.getLogger("org").setLevel(Level.ERROR)
 
   import utils.SparkFunctions._
   spark.udf.register("geterr", getError)

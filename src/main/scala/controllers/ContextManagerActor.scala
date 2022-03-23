@@ -2,7 +2,7 @@ package scommender
 package controllers
 
 import Bootstrap.services.{performanceEvaluatorService => performanceEvaluator}
-import Bootstrap.spark
+import Bootstrap.{appConfig, spark}
 import conf.{ALSDefaultConf, RecommenderDataPaths}
 import models.{SongDTO, User}
 import utils.TimeUtils.timeTrack
@@ -11,6 +11,8 @@ import utils.box.{Box, BoxSupport}
 import akka.actor.{Actor, ActorLogging, ActorRef, PoisonPill, Props}
 import org.apache.spark.mllib.recommendation.MatrixFactorizationModel
 import utils.DataFrameProvider
+
+import org.apache.hadoop.mapred.InvalidInputException
 
 import java.time.temporal.ChronoUnit
 import scala.concurrent.duration.Duration
@@ -46,20 +48,25 @@ class ContextManagerActor(
     * */
     case UpdateModel =>
       log.info(s"updating model started on context manager actor: ${self.path}")
-      val modelBox = toBox {
-        timeTrack(operationName = "loading latest model", ChronoUnit.MILLIS) {
-          MatrixFactorizationModel
-            .load(spark.sparkContext, RecommenderDataPaths.latestModelPath)
+      if (appConfig.getBoolean("scommender.cache-matrix")) {
+        val cachedModelBox = toBox {
+          timeTrack(operationName = "loading latest model", ChronoUnit.MILLIS) {
+            MatrixFactorizationModel
+              .load(spark.sparkContext, RecommenderDataPaths.latestModelPath)
+          }
         }
-      }
-
-      modelBox peek { model =>
-        context.become(receiveWithLatestModel(model))
-        performanceEvaluator.evaluateUsingAllMethodsDispatched(model)
-      } ifFailed { _ =>
-        log.info("could not find latest model")
-        newSlave ! UpdateModel
-      }
+        cachedModelBox peek { model =>
+          context.become(receiveWithLatestModel(model))
+          if (appConfig.getBoolean("scommender.performance-test-on-startup")) {
+            performanceEvaluator.evaluateUsingAllMethodsDispatched(model)
+          }
+        } ifFailed {
+          case se if se.isOfType[InvalidInputException] => // is an IOException, since no latest model was persisted before
+            newSlave ! UpdateModel
+          case other =>
+            log.error(other, "could not load latest model")
+        }
+      } else newSlave ! UpdateModel
 
     case GetLatestModel =>
       sender() ! toBox(Option.empty[MatrixFactorizationModel])
@@ -67,7 +74,9 @@ class ContextManagerActor(
     case UpdateSuccessful(model) =>
       context.become(receiveWithLatestModel(model))
       sender() ! PoisonPill
-      newSlave ! Save(model)
+      if (appConfig.getBoolean("scommender.cache-matrix")) {
+        newSlave ! Save(model)
+      }
       performanceEvaluator.evaluateUsingAllMethodsDispatched(model)
 
     /*
@@ -97,7 +106,9 @@ class ContextManagerActor(
     case UpdateSuccessful(model) =>
       context.become(receiveWithLatestModel(model))
       sender() ! PoisonPill
-      newSlave ! Save(model)
+      if (appConfig.getBoolean("scommender.cache-matrix")) {
+        newSlave ! Save(model)
+      }
 
     /*
     *    Data append messages
