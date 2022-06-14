@@ -22,7 +22,7 @@ trait ApplicationJsonSupport extends SprayJsonSupport with JsonSnakecaseFormatSu
   implicit val metaFormatter: RootJsonFormat[Meta] = jsonFormat1(Meta.apply)
   implicit val songDTOFormatter: RootJsonFormat[SongDTO] = jsonFormat6(SongDTO.apply)
   implicit val recommendationResultFormatter: RootJsonFormat[RecommendationResult] = jsonFormat3(RecommendationResult)
-  implicit val alsConfigFormatter: RootJsonFormat[ALSConfig] = jsonFormat7(ALSConfig)
+  implicit val alsConfigFormatter: RootJsonFormat[ALSConfig] = jsonFormat7(ALSConfig.apply)
   implicit val diagnosticsPerformanceFormatter: RootJsonFormat[ModelPerformanceResult] = jsonFormat4(ModelPerformanceResult)
   implicit val diagnosticReportFormatter: RootJsonFormat[DiagnosticsReport] =
     jsonFormat8(DiagnosticsReport)
